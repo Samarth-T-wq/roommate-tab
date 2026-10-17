@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* The whole palette lives here. Each --color-* also becomes a Tailwind class, e.g. bg-page, text-muted, text-pos. */
+@theme {
+  --color-page: #fff9f0;
+  --color-card: #ffffff;
+  --color-line: #eadfcb;
+  --color-ink: #1f2937;
+  --color-muted: #6b7280;
+  --color-primary: #16a34a;
+  --color-primary-hover: #15803d;
+  --color-mint: #dcfce7;
+  --color-sun: #ffd93d;
+  --color-pos: #16a34a;
+  --color-neg: #dc2626;
+  --color-zero: #9ca3af;
+  --shadow-soft: 0 6px 20px rgb(31 41 55 / 0.07);
+}
+
+@theme inline {
+  --font-sans: var(--font-nunito);
+}
+
+:root {
+  color-scheme: light;
+}
+
+@layer base {
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+  }
+
+  /* Form fields never inherit colors. */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    background: var(--color-card);
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+    outline: none;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-zero);
+    opacity: 1;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgb(22 163 74 / 0.25);
+  }
+  option {
+    background: var(--color-card);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-3xl border border-line bg-card p-5 text-ink shadow-soft;
+  }
+  .section-title {
+    @apply mb-3 text-xl font-extrabold text-ink;
+  }
+  .input {
+    @apply w-full rounded-2xl px-4 py-3 text-base;
+  }
+  .btn {
+    @apply rounded-2xl bg-primary px-5 py-3 font-extrabold text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-soft {
+    @apply rounded-2xl bg-mint px-4 py-2 font-bold text-primary-hover hover:brightness-95;
+  }
+  .check {
+    @apply h-6 w-6 shrink-0 accent-primary;
+  }
+}
