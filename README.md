@@ -20,3 +20,4 @@ Logins: roommates sign in with a username and password (no email). Under the hoo
 - In Supabase → Authentication → Sign In / Providers, turn off "Allow new users to sign up" so only admins can make accounts.
 
 
+
