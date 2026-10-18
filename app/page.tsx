@@ -77,6 +77,7 @@ export default function Home() {
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-8 pb-16">
       {!member && <h1 className="mb-6 text-4xl font-black tracking-tight">Roommate Tab</h1>}
+      {session && <AdminPanel />}
       {content}
       {session && (
         <>
@@ -84,7 +85,6 @@ export default function Home() {
             Sign out ({loginName(session.user.email)})
           </button>
           <SetPassword />
-          <AdminPanel />
         </>
       )}
     </main>
