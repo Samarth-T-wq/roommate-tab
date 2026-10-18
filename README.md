@@ -4,11 +4,13 @@ Tracks shared expenses and who owes who between roommates. It only keeps records
 
 - Next.js (App Router) + Tailwind, all data access in the browser via `supabase-js`.
 - Security comes from the existing Supabase RLS policies.
-- Env vars (in `.env.local` locally, and in Vercel): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- Env vars (in `.env.local` locally, and in Vercel): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and for Movie Night `GROQ_API_KEY` (server-only, never prefix it with `NEXT_PUBLIC_`). Optional: `GROQ_MODEL` (default `llama-3.3-70b-versatile`).
 
 ```
 npm install
 npm run dev   # http://localhost:3000
 ```
 
-Supabase setup: add your site URLs under Authentication → URL Configuration, and enable Realtime on the `expenses`, `settlements` and `members` tables.
+Supabase setup: login is email + password. For instant sign-up with no confirmation email, turn off Authentication → Providers → Email → "Confirm email". Add your site URLs under Authentication → URL Configuration, and enable Realtime on the `expenses`, `settlements` and `members` tables.
+
+Movie Night: run `supabase/movie_night.sql` once in the Supabase SQL editor. It creates the `movies` and `movie_ratings` tables, their RLS policies, and adds both to Realtime. Suggestions come from `app/api/recommend/route.ts`, which calls Groq with the household's ratings as a taste profile.

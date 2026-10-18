@@ -11,6 +11,7 @@ import ShoppingList from "@/components/ShoppingList";
 import Chores from "@/components/Chores";
 import Expenses from "@/components/Expenses";
 import Roommates from "@/components/Roommates";
+import MovieNight from "@/components/MovieNight";
 import { useLedger } from "@/lib/ledger";
 
 export default function Home() {
@@ -92,6 +93,7 @@ function HouseholdView({ member }: { member: Member }) {
         <ShoppingList member={member} />
         <Chores member={member} members={ledger.members} nets={ledger.nets} />
         <Expenses member={member} ledger={ledger} />
+        <MovieNight member={member} members={ledger.members} nets={ledger.nets} />
       </div>
     </>
   );

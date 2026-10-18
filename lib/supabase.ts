@@ -50,6 +50,17 @@ export type Chore = {
   created_at: string;
 };
 
+export type Movie = {
+  id: string;
+  household_id: string;
+  added_by: string;
+  title: string;
+  year: number | null;
+  watched_at: string;
+  created_at: string;
+  movie_ratings: { member_id: string; stars: number }[];
+};
+
 export const dollars = (cents: number) =>
   (cents < 0 ? "-$" : "$") + (Math.abs(cents) / 100).toFixed(2);
 
