@@ -19,3 +19,4 @@ Logins: roommates sign in with a username and password (no email). Under the hoo
 - Vercel env vars: `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API Keys → secret key; server-only) and `ADMIN_EMAILS` (comma-separated, e.g. `a@x.com,b@y.com`).
 - In Supabase → Authentication → Sign In / Providers, turn off "Allow new users to sign up" so only admins can make accounts.
 
+
