@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { EmailOtpType, Session } from "@supabase/supabase-js";
 import { supabase, type Member } from "@/lib/supabase";
 import Login from "@/components/Login";
 import SetPassword from "@/components/SetPassword";
@@ -24,19 +24,30 @@ export default function Home() {
   useEffect(() => {
     // If we arrived from a login link that didn't work, say why instead of silently showing the form.
     const url = new URL(window.location.href);
-    const linkError =
+    let linkError =
       url.searchParams.get("error_description") ?? new URLSearchParams(url.hash.slice(1)).get("error_description");
-    const fromLink = Boolean(linkError) || url.searchParams.has("code");
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (!fromLink) return;
-      window.history.replaceState(null, "", "/");
-      if (!data.session)
-        setAuthNotice(
-          (linkError ? `Login link didn't work: ${linkError}. ` : "That login link couldn't be used in this browser. ") +
-            "Send a new email and type the code from it below, or open the link in the same browser you requested it from."
-        );
-    });
+    // Links from our email templates carry ?token_hash=...&type=..., which works in any browser
+    // (unlike ?code=..., which only works in the browser that asked for the email).
+    const tokenHash = url.searchParams.get("token_hash");
+    const type = url.searchParams.get("type") as EmailOtpType | null;
+    const fromLink = Boolean(linkError) || url.searchParams.has("code") || Boolean(tokenHash);
+    (tokenHash && type
+      ? supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
+          if (error) linkError = error.message;
+        })
+      : Promise.resolve()
+    )
+      .then(() => supabase.auth.getSession())
+      .then(({ data }) => {
+        setSession(data.session);
+        if (!fromLink) return;
+        window.history.replaceState(null, "", "/");
+        if (!data.session)
+          setAuthNotice(
+            (linkError ? `Login link didn't work: ${linkError}. ` : "That login link couldn't be used in this browser. ") +
+              "Send a new email and type the code from it below, or open the link in the same browser you requested it from."
+          );
+      });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
