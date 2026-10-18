@@ -14,3 +14,7 @@ npm run dev   # http://localhost:3000
 Supabase setup: login is email + password. For instant sign-up with no confirmation email, turn off Authentication → Providers → Email → "Confirm email". Add your site URLs under Authentication → URL Configuration, and enable Realtime on the `expenses`, `settlements` and `members` tables.
 
 Movie Night: run `supabase/movie_night.sql` once in the Supabase SQL editor. It creates the `movies` and `movie_ratings` tables, their RLS policies, and adds both to Realtime. Suggestions come from `app/api/recommend/route.ts`, which calls Groq with the household's ratings as a taste profile.
+
+Logins: roommates sign in with a username and password (no email). Under the hood each username is a Supabase user with the address `<username>@roommate-tab.local`, which never receives mail. Admins sign in with their real email and get an "Admin: logins" panel at the bottom of the page to create roommate logins and reset passwords.
+- Vercel env vars: `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API Keys → secret key; server-only) and `ADMIN_EMAILS` (comma-separated, e.g. `a@x.com,b@y.com`).
+- In Supabase → Authentication → Sign In / Providers, turn off "Allow new users to sign up" so only admins can make accounts.

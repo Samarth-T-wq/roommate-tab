@@ -5,6 +5,8 @@ import type { EmailOtpType, Session } from "@supabase/supabase-js";
 import { supabase, type Member } from "@/lib/supabase";
 import Login from "@/components/Login";
 import SetPassword from "@/components/SetPassword";
+import AdminPanel from "@/components/AdminPanel";
+import { loginName } from "@/lib/usernames";
 import Onboard from "@/components/Onboard";
 import Header from "@/components/Header";
 import ShoppingList from "@/components/ShoppingList";
@@ -45,7 +47,7 @@ export default function Home() {
         if (!data.session)
           setAuthNotice(
             (linkError ? `Login link didn't work: ${linkError}. ` : "That login link couldn't be used in this browser. ") +
-              "Send a new email and type the code from it below, or open the link in the same browser you requested it from."
+              "Sign in with your username and password below."
           );
       });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
@@ -79,9 +81,10 @@ export default function Home() {
       {session && (
         <>
           <button onClick={() => supabase.auth.signOut()} className="mt-10 text-sm text-muted underline">
-            Sign out ({session.user.email})
+            Sign out ({loginName(session.user.email)})
           </button>
           <SetPassword />
+          <AdminPanel />
         </>
       )}
     </main>
