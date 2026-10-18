@@ -15,11 +15,26 @@ import { useLedger } from "@/lib/ledger";
 export default function Home() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   // Membership is stored with the user it belongs to, so a different login never sees a stale one.
+  const [authNotice, setAuthNotice] = useState("");
   const [membership, setMembership] = useState<{ userId: string; member: Member | null } | null>(null);
 
   // Track login state. supabase-js also finishes the magic-link login when the page loads with ?code=...
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    // If we arrived from a login link that didn't work, say why instead of silently showing the form.
+    const url = new URL(window.location.href);
+    const linkError =
+      url.searchParams.get("error_description") ?? new URLSearchParams(url.hash.slice(1)).get("error_description");
+    const fromLink = Boolean(linkError) || url.searchParams.has("code");
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (!fromLink) return;
+      window.history.replaceState(null, "", "/");
+      if (!data.session)
+        setAuthNotice(
+          (linkError ? `Login link didn't work: ${linkError}. ` : "That login link couldn't be used in this browser. ") +
+            "Send a new email and type the code from it below, or open the link in the same browser you requested it from."
+        );
+    });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
@@ -37,7 +52,7 @@ export default function Home() {
   if (session === undefined || (session && member === undefined)) {
     content = <p className="text-center text-sm text-muted">Loading…</p>;
   } else if (!session) {
-    content = <Login />;
+    content = <Login notice={authNotice} />;
   } else if (!member) {
     content = <Onboard onDone={() => loadMember(session.user.id)} />;
   } else {
