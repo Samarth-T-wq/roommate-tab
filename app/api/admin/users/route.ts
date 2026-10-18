@@ -5,8 +5,15 @@ import { USERNAME_DOMAIN, USERNAME_RULE, loginEmail, loginName } from "@/lib/use
 // Uses the Supabase secret key, which bypasses RLS, so it must never reach the browser.
 const fail = (status: number, error: string) => Response.json({ error }, { status });
 
+// Supabase's "Invalid API key" doesn't say which key or what to do about it.
+const explain = (message: string) =>
+  /invalid api key/i.test(message)
+    ? "Supabase rejected SUPABASE_SECRET_KEY. In Vercel, paste the secret key (sb_secret_…) from this same Supabase project, with no quotes or spaces, then redeploy."
+    : message;
+
 function adminClient() {
-  const key = process.env.SUPABASE_SECRET_KEY;
+  // Pasted values often pick up quotes or a trailing newline.
+  const key = process.env.SUPABASE_SECRET_KEY?.trim().replace(/^["']|["']$/g, "");
   if (!key) return null;
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -35,7 +42,7 @@ async function requireAdmin(request: Request) {
 // Small households, so one page of users is plenty.
 async function usernameAccounts(supabase: NonNullable<ReturnType<typeof adminClient>>) {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error) return { error: error.message, users: [] as User[] };
+  if (error) return { error: explain(error.message), users: [] as User[] };
   return { error: "", users: data.users.filter((u) => u.email?.endsWith(`@${USERNAME_DOMAIN}`)) };
 }
 
@@ -67,7 +74,7 @@ export async function POST(request: Request) {
   if (body.action === "create") {
     // email_confirm: true marks it confirmed, so Supabase never tries to email the fake address.
     const { error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-    if (error) return fail(400, /already/i.test(error.message) ? `"${username}" is taken.` : error.message);
+    if (error) return fail(400, /already/i.test(error.message) ? `"${username}" is taken.` : explain(error.message));
     return Response.json({ ok: true });
   }
 
@@ -77,7 +84,7 @@ export async function POST(request: Request) {
     const user = list.users.find((u) => u.email === email);
     if (!user) return fail(404, `No account called "${username}".`);
     const { error } = await supabase.auth.admin.updateUserById(user.id, { password });
-    if (error) return fail(400, error.message);
+    if (error) return fail(400, explain(error.message));
     return Response.json({ ok: true });
   }
 
