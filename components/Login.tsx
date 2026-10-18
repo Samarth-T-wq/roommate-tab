@@ -4,81 +4,125 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function Login({ notice }: { notice?: string }) {
+  const [mode, setMode] = useState<"signin" | "signup" | "code">("signin");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "verifying">("idle");
+  const [codeSent, setCodeSent] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("sending");
+    setBusy(true);
     setError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) {
-      setError(error.message);
-      setStatus("idle");
+    setInfo("");
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setError(error.message);
+    } else if (mode === "signup") {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) setError(error.message);
+      // No session means the project still requires email confirmation.
+      else if (!data.session) setInfo(`Check ${email} to confirm your account, then sign in.`);
+    } else if (!codeSent) {
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+      if (error) setError(error.message);
+      else setCodeSent(true);
     } else {
-      setStatus("sent");
+      const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "email" });
+      if (error) setError(error.message);
     }
+    setBusy(false); // on success the page switches to the app by itself
   }
 
-  // Typing the code from the email works in any browser, and can't be used up by email link scanners.
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("verifying");
+  function switchTo(next: typeof mode) {
+    setMode(next);
+    setCodeSent(false);
     setError("");
-    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "email" });
-    if (error) setError(error.message);
-    setStatus("sent"); // on success the page switches to the app by itself
+    setInfo("");
   }
 
-  if (status === "sent" || status === "verifying") {
-    return (
-      <form onSubmit={verify} className="card space-y-3">
-        <p>
-          Check <b>{email}</b> for a login email.
-        </p>
-        <p className="text-sm text-muted">
-          Tap the link in it (open it in this same browser), or type the code from the email here:
-        </p>
-        <input
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Code from email"
-          className="input text-center font-mono text-lg tracking-widest"
-        />
-        <button disabled={status === "verifying" || !code.trim()} className="btn w-full">
-          {status === "verifying" ? "Checking…" : "Log in with code"}
-        </button>
-        {error && <p className="text-sm text-neg">{error}</p>}
-        <button type="button" onClick={() => setStatus("idle")} className="text-sm text-muted underline">
-          Use a different email
-        </button>
-      </form>
-    );
-  }
+  const label =
+    mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : codeSent ? "Log in with code" : "Email me a code";
 
   return (
     <form onSubmit={submit} className="card space-y-3">
       {notice && <p className="rounded-2xl bg-mint p-3 text-sm text-ink">{notice}</p>}
+
+      {mode !== "code" && (
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-page p-1">
+          {(["signin", "signup"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => switchTo(m)}
+              className={`min-h-10 rounded-xl text-sm font-bold ${mode === m ? "bg-primary text-white" : "text-muted"}`}
+            >
+              {m === "signin" ? "Sign in" : "New here"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <label className="block text-sm font-medium">Email</label>
       <input
         type="email"
         required
+        autoComplete="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
         className="input"
       />
-      <button disabled={status === "sending"} className="btn w-full">
-        {status === "sending" ? "Sending…" : "Send login email"}
+
+      {mode !== "code" && (
+        <>
+          <label className="block text-sm font-medium">Password</label>
+          <input
+            type="password"
+            required
+            minLength={6}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={mode === "signup" ? "At least 6 characters" : ""}
+            className="input"
+          />
+        </>
+      )}
+
+      {mode === "code" && codeSent && (
+        <input
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          required
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Code from email"
+          className="input text-center font-mono text-lg tracking-widest"
+        />
+      )}
+
+      <button disabled={busy} className="btn w-full">
+        {busy ? "One sec…" : label}
       </button>
       {error && <p className="text-sm text-neg">{error}</p>}
+      {info && <p className="text-sm text-ink">{info}</p>}
+
+      {/* Accounts made before passwords existed have none, so they can still get in with an email code. */}
+      <button
+        type="button"
+        onClick={() => switchTo(mode === "code" ? "signin" : "code")}
+        className="text-sm text-muted underline"
+      >
+        {mode === "code" ? "Use a password instead" : "No password yet? Email me a login code"}
+      </button>
     </form>
   );
 }

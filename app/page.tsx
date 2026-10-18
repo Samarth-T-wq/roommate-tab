@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, type Member } from "@/lib/supabase";
 import Login from "@/components/Login";
+import SetPassword from "@/components/SetPassword";
 import Onboard from "@/components/Onboard";
 import Header from "@/components/Header";
 import ShoppingList from "@/components/ShoppingList";
@@ -64,9 +65,12 @@ export default function Home() {
       {!member && <h1 className="mb-6 text-4xl font-black tracking-tight">Roommate Tab</h1>}
       {content}
       {session && (
-        <button onClick={() => supabase.auth.signOut()} className="mt-10 text-sm text-muted underline">
-          Sign out ({session.user.email})
-        </button>
+        <>
+          <button onClick={() => supabase.auth.signOut()} className="mt-10 text-sm text-muted underline">
+            Sign out ({session.user.email})
+          </button>
+          <SetPassword />
+        </>
       )}
     </main>
   );
