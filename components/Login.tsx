@@ -4,11 +4,14 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { loginEmail } from "@/lib/usernames";
 
-// Roommates type their username; admins type their real email. Accounts are made by an admin, so there's no sign-up.
+// Roommates sign in with a username + password an admin made for them.
+// Admins sign in with their real email: Supabase emails them a login link and a code.
 export default function Login({ notice }: { notice?: string }) {
   const [admin, setAdmin] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,11 +19,34 @@ export default function Login({ notice }: { notice?: string }) {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail(username), password });
-    if (error)
-      setError(/invalid login/i.test(error.message) ? `Wrong ${admin ? "email" : "username"} or password.` : error.message);
+    if (!admin) {
+      const { error } = await supabase.auth.signInWithPassword({ email: loginEmail(username), password });
+      if (error) setError(/invalid login/i.test(error.message) ? "Wrong username or password." : error.message);
+    } else if (!codeSent) {
+      // shouldCreateUser: false, so this only works for accounts that already exist.
+      const { error } = await supabase.auth.signInWithOtp({
+        email: username.trim(),
+        options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+      });
+      if (error) setError(/signups not allowed|not found/i.test(error.message) ? "No admin account with that email." : error.message);
+      else setCodeSent(true);
+    } else {
+      // Typing the code works in any browser, including the home-screen app, where email links never open.
+      const { error } = await supabase.auth.verifyOtp({ email: username.trim(), token: code.trim(), type: "email" });
+      if (error) setError(error.message);
+    }
     setBusy(false); // on success the page switches to the app by itself
   }
+
+  function switchTo(a: boolean) {
+    setAdmin(a);
+    setUsername("");
+    setCode("");
+    setCodeSent(false);
+    setError("");
+  }
+
+  const label = !admin ? "Sign in" : codeSent ? "Log in with code" : "Email me a login link";
 
   return (
     <form onSubmit={submit} className="card space-y-3">
@@ -31,11 +57,7 @@ export default function Login({ notice }: { notice?: string }) {
           <button
             key={String(a)}
             type="button"
-            onClick={() => {
-              setAdmin(a);
-              setUsername("");
-              setError("");
-            }}
+            onClick={() => switchTo(a)}
             className={`min-h-10 rounded-xl text-sm font-bold ${admin === a ? "bg-primary text-white" : "text-muted"}`}
           >
             {a ? "Admin" : "Roommate"}
@@ -47,6 +69,7 @@ export default function Login({ notice }: { notice?: string }) {
       <input
         required
         type={admin ? "email" : "text"}
+        disabled={admin && codeSent}
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
@@ -57,25 +80,52 @@ export default function Login({ notice }: { notice?: string }) {
         className="input"
       />
 
-      <label className="block text-sm font-medium">Password</label>
-      <input
-        type="password"
-        required
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="input"
-      />
+      {!admin && (
+        <>
+          <label className="block text-sm font-medium">Password</label>
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input"
+          />
+        </>
+      )}
+
+      {admin && codeSent && (
+        <>
+          <p className="text-sm text-muted">
+            Check <b>{username.trim()}</b>. Tap the link in the email, or type the code from it here:
+          </p>
+          <input
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            required
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Code from email"
+            className="input text-center font-mono text-lg tracking-widest"
+          />
+        </>
+      )}
 
       <button disabled={busy} className="btn w-full">
-        {busy ? "One sec…" : "Sign in"}
+        {busy ? "One sec…" : label}
       </button>
       {error && <p className="text-sm text-neg">{error}</p>}
-      <p className="text-sm text-muted">
-        {admin
-          ? "After signing in, use Manage logins at the top to make roommate accounts."
-          : "No account or forgot your password? Ask an admin to set one up."}
-      </p>
+      {admin && codeSent ? (
+        <button type="button" onClick={() => switchTo(true)} className="text-sm text-muted underline">
+          Use a different email
+        </button>
+      ) : (
+        <p className="text-sm text-muted">
+          {admin
+            ? "After signing in, use Manage logins at the top to make roommate accounts."
+            : "No account or forgot your password? Ask an admin to set one up."}
+        </p>
+      )}
     </form>
   );
 }
