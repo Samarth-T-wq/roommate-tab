@@ -20,6 +20,6 @@ Logins: roommates sign in with a username and password (no email). Under the hoo
 - Vercel env vars: `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API Keys → secret key; server-only) and `ADMIN_EMAILS` (comma-separated, e.g. `a@x.com,b@y.com`).
 - In Supabase → Authentication → Sign In / Providers, turn off "Allow new users to sign up" so only admins can make accounts.
 
+Admin accounts are silent: signing in with an admin email shows only the admin screen (make logins, reset passwords) and never a household. Admins make a username login for themselves to use the app as a roommate. Any household membership an admin account already has is hidden from everyone else's lists (`/api/admins` tells the app which accounts are admins).
 
-
-
+Guests: run `supabase/guests.sql` once in the Supabase SQL editor. When adding an expense, "Add a guest" puts a non-roommate (e.g. a friend at pizza night) in the split by name. Their share is listed under Money → Guests until someone taps Paid, and never changes roommate balances.

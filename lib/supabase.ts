@@ -28,6 +28,19 @@ export type Settlement = {
   created_at: string;
 };
 
+// A non-roommate's share of one expense (e.g. a friend at pizza night). Tracked until marked paid;
+// it never affects roommate balances.
+export type ExpenseGuest = {
+  id: string;
+  household_id: string;
+  expense_id: string;
+  name: string;
+  share_cents: number;
+  paid: boolean;
+  paid_at: string | null;
+  created_at: string;
+};
+
 export type ShoppingItem = {
   id: string;
   household_id: string;

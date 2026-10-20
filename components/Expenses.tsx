@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ArrowLeftRight, ChevronDown, Receipt } from "lucide-react";
-import { supabase, dollars, toCents, splitEvenly, type Member } from "@/lib/supabase";
+import { ArrowLeftRight, ChevronDown, Receipt, UserPlus } from "lucide-react";
+import { supabase, dollars, toCents, splitEvenly, type ExpenseGuest, type Member } from "@/lib/supabase";
 import type { Ledger } from "@/lib/ledger";
 import { Avatar, Fab, RemoveButton, Sheet } from "@/components/ui";
 
@@ -35,7 +35,7 @@ function dayLabel(iso: string) {
 export default function Expenses({ member, ledger }: { member: Member; ledger: Ledger }) {
   const householdId = member.household_id;
   const me = member.id;
-  const { members, expenses, settlements, error, setError, load } = ledger;
+  const { members, expenses, settlements, guests, error, setError, load } = ledger;
   const [open, setOpen] = useState<string | null>(null);
   const [settle, setSettle] = useState<{ other: string; amount: string } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -78,6 +78,15 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
     if (error) return setError(error.message);
     setSettle(null);
     load();
+  }
+
+  const guestsOf = (expenseId: string) => guests.filter((g) => g.expense_id === expenseId);
+  const unpaid = guests.filter((g) => !g.paid);
+
+  async function markGuestPaid(g: ExpenseGuest) {
+    const { error } = await supabase.from("expense_guests").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", g.id);
+    if (error) setError(error.message);
+    else load();
   }
 
   async function remove(table: "expenses" | "settlements", id: string) {
@@ -172,6 +181,34 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
         </ul>
       </section>
 
+      {unpaid.length > 0 && (
+        <section>
+          <h2 className="eyebrow">Guests</h2>
+          <ul className="card p-0">
+            {unpaid.map((g) => {
+              const e = expenses.find((x) => x.id === g.expense_id);
+              return (
+                <li key={g.id} className="flex min-h-16 items-center gap-3 border-t border-line px-4 first:border-t-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-zero text-xs font-semibold text-muted">
+                    {g.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {g.name} owes {e ? (e.paid_by === me ? "you" : nameOf(e.paid_by)) : "the payer"}
+                    </p>
+                    <p className="truncate text-sm text-muted">Guest · {e?.description ?? "expense"}</p>
+                  </div>
+                  <Money tone={e?.paid_by === me ? "plus" : "plain"} cents={g.share_cents} />
+                  <button onClick={() => markGuestPaid(g)} className="btn-soft">
+                    Paid
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {error && <p className="text-sm font-medium text-neg">{error}</p>}
 
       <section>
@@ -195,6 +232,7 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
                           {h.e.expense_splits.length === members.length
                             ? `split ${members.length} ways`
                             : h.e.expense_splits.map((s) => nameOf(s.member_id)).join(", ")}
+                          {guestsOf(h.e.id).length > 0 && ` + ${guestsOf(h.e.id).map((g) => g.name).join(", ")}`}
                         </p>
                       </>
                     ) : (
@@ -207,7 +245,10 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
                     )}
                   </div>
                   {h.kind === "expense" ? (
-                    <b className="font-semibold tabular-nums">{dollars(h.e.total_cents)}</b>
+                    // A guest's share is stored beside the expense, so the full bill is both added together.
+                    <b className="font-semibold tabular-nums">
+                      {dollars(h.e.total_cents + guestsOf(h.e.id).reduce((t, g) => t + g.share_cents, 0))}
+                    </b>
                   ) : (
                     <Money tone={h.s.to_member === me ? "plus" : "plain"} cents={h.s.cents} />
                   )}
@@ -263,20 +304,31 @@ function AddExpense({
   const [excluded, setExcluded] = useState<string[]>([]);
   const [custom, setCustom] = useState(false);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  // Non-roommates on this one bill, e.g. a friend at pizza night. `amount` is only used in custom mode.
+  const [guestList, setGuestList] = useState<{ key: string; name: string; amount: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const included = members.filter((m) => !excluded.includes(m.id));
   const totalCents = toCents(total);
-  const even = totalCents ? splitEvenly(totalCents, included.length) : [];
+  // Equal split runs across roommates and guests together; roommates come first, so they absorb any odd cent.
+  const even = totalCents ? splitEvenly(totalCents, included.length + guestList.length) : [];
+  const guestEven = even.slice(included.length);
   const customCents = included.map((m) => parseCents(amounts[m.id] ?? ""));
-  const customSum = customCents.reduce<number>((t, c) => t + (c ?? 0), 0);
+  const guestCustomCents = guestList.map((g) => parseCents(g.amount));
+  const customSum = [...customCents, ...guestCustomCents].reduce<number>((t, c) => t + (c ?? 0), 0);
 
   function toggleCustom() {
     // Start custom mode from the equal split so small tweaks are easy.
-    if (!custom) setAmounts(Object.fromEntries(included.map((m, i) => [m.id, ((even[i] ?? 0) / 100).toFixed(2)])));
+    if (!custom) {
+      setAmounts(Object.fromEntries(included.map((m, i) => [m.id, ((even[i] ?? 0) / 100).toFixed(2)])));
+      setGuestList(guestList.map((g, i) => ({ ...g, amount: ((guestEven[i] ?? 0) / 100).toFixed(2) })));
+    }
     setCustom(!custom);
   }
+
+  const setGuest = (key: string, change: Partial<{ name: string; amount: string }>) =>
+    setGuestList(guestList.map((g) => (g.key === key ? { ...g, ...change } : g)));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -284,24 +336,60 @@ function AddExpense({
     if (!description.trim()) return setError("Add a description.");
     if (included.length === 0) return setError("Pick at least one person to split with.");
     if (custom && customCents.some((c) => c === null)) return setError("Custom amounts must be $0 or more.");
+    if (guestList.some((g) => !g.name.trim())) return setError("Give each guest a name.");
+    if (custom && guestCustomCents.some((c) => c === null)) return setError("Custom amounts must be $0 or more.");
     if (custom && customSum !== totalCents)
       return setError(`Custom amounts add up to ${dollars(customSum)}, but the total is ${dollars(totalCents)}.`);
 
     const splits = included
       .map((m, i) => ({ member_id: m.id, share_cents: custom ? customCents[i]! : even[i] }))
       .filter((s) => s.share_cents > 0);
+    const guestShares = guestList
+      .map((g, i) => ({ name: g.name.trim().slice(0, 40), share_cents: custom ? guestCustomCents[i]! : guestEven[i] }))
+      .filter((g) => g.share_cents > 0);
+    // The expense itself holds only the roommates' part; guest shares are stored beside it.
+    const memberTotal = splits.reduce((t, s) => t + s.share_cents, 0);
+    if (memberTotal === 0) return setError("At least one roommate needs a share (you can include yourself).");
 
     setBusy(true);
     setError("");
-    const { error } = await supabase.rpc("add_expense", {
+    const { data, error } = await supabase.rpc("add_expense", {
       h_id: householdId,
       payer,
       descr: description.trim(),
-      total: totalCents,
+      total: memberTotal,
       splits,
     });
+    if (error) {
+      setBusy(false);
+      return setError(error.message);
+    }
+
+    if (guestShares.length > 0) {
+      // add_expense may or may not return the new id, so fall back to the newest matching expense.
+      let expenseId: string | null = typeof data === "string" ? data : (data?.id ?? null);
+      if (!expenseId) {
+        const { data: rows } = await supabase
+          .from("expenses")
+          .select("id")
+          .eq("household_id", householdId)
+          .eq("paid_by", payer)
+          .eq("description", description.trim())
+          .order("created_at", { ascending: false })
+          .limit(1);
+        expenseId = rows?.[0]?.id ?? null;
+      }
+      const { error: guestError } = expenseId
+        ? await supabase
+            .from("expense_guests")
+            .insert(guestShares.map((g) => ({ ...g, household_id: householdId, expense_id: expenseId })))
+        : { error: { message: "couldn't find the new expense" } };
+      if (guestError) {
+        setBusy(false);
+        return setError(`Expense saved, but the guests weren't: ${guestError.message}`);
+      }
+    }
     setBusy(false);
-    if (error) return setError(error.message);
     onAdded();
   }
 
@@ -388,6 +476,48 @@ function AddExpense({
             })}
           </div>
         )}
+        {guestList.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {guestList.map((g, i) => (
+              <li key={g.key} className="flex items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-zero text-xs font-semibold text-muted">
+                  {g.name.trim().slice(0, 1).toUpperCase() || "?"}
+                </span>
+                <input
+                  value={g.name}
+                  onChange={(e) => setGuest(g.key, { name: e.target.value })}
+                  maxLength={40}
+                  placeholder="Guest name"
+                  aria-label="Guest name"
+                  className="input h-10 min-w-0 flex-1"
+                />
+                {custom ? (
+                  <input
+                    inputMode="decimal"
+                    value={g.amount}
+                    onChange={(e) => setGuest(g.key, { amount: e.target.value })}
+                    placeholder="0.00"
+                    aria-label={`${g.name || "Guest"} amount`}
+                    className="input h-10 w-24 text-right tabular-nums"
+                  />
+                ) : (
+                  <span className="w-16 text-right text-sm text-muted tabular-nums">
+                    {guestEven[i] !== undefined ? dollars(guestEven[i]) : ""}
+                  </span>
+                )}
+                <RemoveButton onClick={() => setGuestList(guestList.filter((x) => x.key !== g.key))} label="Remove guest" />
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={() => setGuestList([...guestList, { key: crypto.randomUUID(), name: "", amount: "" }])}
+          className="mt-3 flex items-center gap-1.5 text-sm font-medium text-primary"
+        >
+          <UserPlus size={16} />
+          Add a guest
+        </button>
         {custom && totalCents !== null && (
           <p className={`mt-2 text-right text-sm font-medium ${customSum === totalCents ? "text-pos" : "text-neg"}`}>
             {customSum === totalCents ? "Adds up" : `${dollars(totalCents - customSum)} left`}

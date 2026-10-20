@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { supabase, type Expense, type Member, type Settlement } from "@/lib/supabase";
+import { supabase, type Expense, type ExpenseGuest, type Member, type Settlement } from "@/lib/supabase";
 
-// Members, expenses (with splits) and settlements for a household, kept live with realtime.
-export function useLedger(householdId: string) {
-  const [members, setMembers] = useState<Member[]>([]);
+// Members, expenses (with splits), settlements and guest shares for a household, kept live with realtime.
+// Members whose user is in `hiddenUserIds` (admin accounts) are left out of `members`, so they never show up
+// in lists or pickers; their past expenses still count toward everyone's balances.
+export function useLedger(householdId: string, hiddenUserIds: string[] = []) {
+  const [allMembers, setMembers] = useState<Member[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [guests, setGuests] = useState<ExpenseGuest[]>([]);
   const [error, setError] = useState("");
 
   const load = useCallback(
@@ -17,6 +20,7 @@ export function useLedger(householdId: string) {
         setMembers(d.members);
         setExpenses(d.expenses);
         setSettlements(d.settlements);
+        setGuests(d.guests);
       }),
     [householdId]
   );
@@ -32,13 +36,17 @@ export function useLedger(householdId: string) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "settlements", filter }, load)
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "settlements" }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter }, load)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "expense_guests", filter }, load)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "expense_guests", filter }, load)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "expense_guests" }, load)
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [householdId, load]);
 
-  return { members, expenses, settlements, error, setError, load, nets: netByMember(expenses, settlements) };
+  const members = allMembers.filter((m) => !hiddenUserIds.includes(m.user_id));
+  return { members, expenses, settlements, guests, error, setError, load, nets: netByMember(expenses, settlements) };
 }
 
 export type Ledger = ReturnType<typeof useLedger>;
@@ -78,7 +86,7 @@ export function balanceWith(me: string, other: string, expenses: Expense[], sett
 }
 
 async function fetchLedger(householdId: string) {
-  const [m, e, s] = await Promise.all([
+  const [m, e, s, g] = await Promise.all([
     supabase.from("members").select("*").eq("household_id", householdId).order("display_name"),
     supabase
       .from("expenses")
@@ -86,11 +94,14 @@ async function fetchLedger(householdId: string) {
       .eq("household_id", householdId)
       .order("created_at", { ascending: false }),
     supabase.from("settlements").select("*").eq("household_id", householdId).order("created_at", { ascending: false }),
+    supabase.from("expense_guests").select("*").eq("household_id", householdId).order("created_at"),
   ]);
   return {
+    // Guest errors are left out: until supabase/guests.sql is run that table doesn't exist, and the rest still works.
     error: (m.error ?? e.error ?? s.error)?.message ?? "",
     members: (m.data ?? []) as Member[],
     expenses: (e.data ?? []) as Expense[],
     settlements: (s.data ?? []) as Settlement[],
+    guests: (g.data ?? []) as ExpenseGuest[],
   };
 }

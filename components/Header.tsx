@@ -6,9 +6,8 @@ import { supabase, type Household, type Member } from "@/lib/supabase";
 import { loginName } from "@/lib/usernames";
 import { Avatar, Sheet } from "@/components/ui";
 import SetPassword from "@/components/SetPassword";
-import AdminPanel from "@/components/AdminPanel";
 
-// Household name, plus the account button that opens invite code, password, admin and sign out.
+// Household name, plus the account button that opens invite code, password and sign out.
 export default function Header({ member, email }: { member: Member; email?: string }) {
   const [household, setHousehold] = useState<Household | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,7 +64,6 @@ export default function Header({ member, email }: { member: Member; email?: stri
             </div>
           )}
           <SetPassword />
-          <AdminPanel />
           <button onClick={() => supabase.auth.signOut()} className="btn-soft h-11 w-full text-neg">
             <LogOut size={16} />
             Sign out{email ? ` (${loginName(email)})` : ""}

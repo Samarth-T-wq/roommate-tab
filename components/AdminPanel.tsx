@@ -18,9 +18,9 @@ async function call(method: "GET" | "POST", body?: object) {
 }
 
 // Create roommate logins and reset forgotten passwords. Renders nothing for non-admins.
-export default function AdminPanel() {
+export default function AdminPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [accounts, setAccounts] = useState<Account[] | null>(null); // null = not an admin (or still checking)
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [resetFor, setResetFor] = useState<string | null>(null);
@@ -96,9 +96,11 @@ export default function AdminPanel() {
           <KeyRound size={16} />
           Manage logins
         </h2>
-        <button onClick={() => setOpen(false)} className="px-2 text-sm font-medium text-primary">
-          Close
-        </button>
+        {!defaultOpen && (
+          <button onClick={() => setOpen(false)} className="px-2 text-sm font-medium text-primary">
+            Close
+          </button>
+        )}
       </div>
       <form onSubmit={create} className="mb-4 space-y-2">
         <div className="grid grid-cols-2 gap-2">

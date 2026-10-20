@@ -19,7 +19,7 @@ export default function Page() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   // Membership is stored with the user it belongs to, so a different login never sees a stale one.
   const [authNotice, setAuthNotice] = useState("");
-  const [membership, setMembership] = useState<{ userId: string; member: Member | null } | null>(null);
+  const [membership, setMembership] = useState<({ userId: string } & Account) | null>(null);
 
   // Track login state. supabase-js also finishes the magic-link login when the page loads with ?code=...
   useEffect(() => {
@@ -53,43 +53,73 @@ export default function Page() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const loadMember = (userId: string) =>
-    fetchMember(userId).then((member) => setMembership({ userId, member }));
+  const loadMember = (userId: string) => fetchAccount(userId).then((a) => setMembership({ userId, ...a }));
 
   const userId = session?.user.id;
   useEffect(() => {
-    if (userId) fetchMember(userId).then((member) => setMembership({ userId, member }));
+    if (userId) fetchAccount(userId).then((a) => setMembership({ userId, ...a }));
   }, [userId]);
-  const member = membership && membership.userId === userId ? membership.member : undefined;
+  const account = membership && membership.userId === userId ? membership : undefined;
+  const member = account?.member;
+
+  // Admins are silent controllers: they only manage logins and never see or join a household.
+  if (session && account?.isAdmin)
+    return (
+      <main className="mx-auto w-full max-w-md flex-1 space-y-4 px-4 pt-12 pb-16">
+        <div className="mb-4">
+          <h1 className="text-3xl font-semibold tracking-tight">Admin</h1>
+          <p className="mt-1 text-muted">
+            Make a username login for each roommate, including yourself. This account stays hidden from the household.
+          </p>
+        </div>
+        <AdminPanel defaultOpen />
+        <SignOut email={session.user.email} />
+      </main>
+    );
 
   // Signed in and in a household: the tabbed app.
-  if (session && member) return <HouseholdView member={member} email={session.user.email} />;
+  if (session && member)
+    return <HouseholdView member={member} email={session.user.email} hiddenUserIds={account.adminUserIds} />;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 pt-12 pb-16">
       <h1 className="text-3xl font-semibold tracking-tight">Roommate Tab</h1>
       <p className="mt-1 mb-8 text-muted">Bills, chores, groceries and movie night for your place.</p>
-      {session === undefined || (session && member === undefined) ? (
+      {session === undefined || (session && account === undefined) ? (
         <p className="text-center text-sm text-muted">Loading…</p>
       ) : !session ? (
         <Login notice={authNotice} />
       ) : (
         <div className="space-y-4">
           <Onboard onDone={() => loadMember(session.user.id)} />
-          <AdminPanel />
-          <button onClick={() => supabase.auth.signOut()} className="btn-soft h-11 w-full">
-            <LogOut size={16} />
-            Sign out ({loginName(session.user.email)})
-          </button>
+          <SignOut email={session.user.email} />
         </div>
       )}
     </main>
   );
 }
 
-async function fetchMember(userId: string): Promise<Member | null> {
-  const { data } = await supabase.from("members").select("*").eq("user_id", userId).limit(1);
-  return data?.[0] ?? null;
+function SignOut({ email }: { email?: string }) {
+  return (
+    <button onClick={() => supabase.auth.signOut()} className="btn-soft h-11 w-full">
+      <LogOut size={16} />
+      Sign out ({loginName(email)})
+    </button>
+  );
+}
+
+type Account = { member: Member | null; isAdmin: boolean; adminUserIds: string[] };
+
+// My household membership, plus whether I'm an admin and which accounts are admins (to hide them).
+async function fetchAccount(userId: string): Promise<Account> {
+  const { data: session } = await supabase.auth.getSession();
+  const [{ data }, admins] = await Promise.all([
+    supabase.from("members").select("*").eq("user_id", userId).limit(1),
+    fetch("/api/admins", { headers: { Authorization: `Bearer ${session.session?.access_token ?? ""}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null),
+  ]);
+  return { member: data?.[0] ?? null, isAdmin: Boolean(admins?.isAdmin), adminUserIds: admins?.adminUserIds ?? [] };
 }
 
 type Tab = "home" | "money" | "chores" | "movies";
@@ -102,8 +132,8 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
 
 // The main screen: header, one tab at a time, and the tab bar.
 // Expense data is loaded once here so Home's balances and the Money tab share it.
-function HouseholdView({ member, email }: { member: Member; email?: string }) {
-  const ledger = useLedger(member.household_id);
+function HouseholdView({ member, email, hiddenUserIds }: { member: Member; email?: string; hiddenUserIds: string[] }) {
+  const ledger = useLedger(member.household_id, hiddenUserIds);
   // Reopen on the tab you were last on. This view only renders in the browser (after login), so reading storage here is safe.
   // Storage can be unavailable (private mode), so failures are ignored.
   const [tab, setTab] = useState<Tab>(() => {
