@@ -173,6 +173,7 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
                 >
                   <span className="block truncate font-medium">
                     {net > 0 ? `${other.display_name} owes you` : net < 0 ? `You owe ${other.display_name}` : other.display_name}
+                    {other.role === "temp" && <span className="badge ml-1.5 bg-subtle align-middle text-muted">Temp</span>}
                   </span>
                   <span className="flex items-center gap-1 text-sm text-muted">
                     {net === 0 ? "All settled" : `${items.length} item${items.length === 1 ? "" : "s"}`}

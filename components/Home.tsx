@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { netColor, signedDollars, type Member } from "@/lib/supabase";
+import { netColor, residentsOf, signedDollars, type Member } from "@/lib/supabase";
 import { balanceWith, type Ledger } from "@/lib/ledger";
 import { todayString, useChores } from "@/lib/chores";
 import { Avatar } from "@/components/ui";
@@ -22,6 +22,7 @@ export default function Home({
 }) {
   const me = member.id;
   const { members, nets, expenses, settlements } = ledger;
+  const residents = residentsOf(members); // chores, rotations and polls; balances below include temps
   const { todo, toggle } = useChores(member.household_id, me);
   const repeating = useRepeating(member.household_id, me);
   const [mineOnly, setMineOnly] = useState(true);
@@ -33,7 +34,7 @@ export default function Home({
     (c) => c.due_date && c.due_date <= today && (!mineOnly || c.assigned_to === me || c.assigned_to === null)
   );
   const dueTurns = (repeating.tasks ?? []).filter(
-    (t) => dueToday(t, members, repeating.doneBy) && (!mineOnly || currentTurn(t, members)?.who === me)
+    (t) => dueToday(t, residents, repeating.doneBy) && (!mineOnly || currentTurn(t, residents)?.who === me)
   );
   const nameOf = (id: string) => (id === me ? "You" : members.find((m) => m.id === id)?.display_name ?? "Someone");
 
@@ -79,7 +80,7 @@ export default function Home({
               <RepeatingRow
                 key={t.id}
                 task={t}
-                members={members}
+                members={residents}
                 me={me}
                 doneBy={repeating.doneBy}
                 onToggle={(occurrence) => repeating.toggle(t, occurrence)}
@@ -95,7 +96,7 @@ export default function Home({
         </button>
       </section>
 
-      <Polls member={member} members={members} />
+      <Polls member={member} members={residents} />
     </div>
   );
 }

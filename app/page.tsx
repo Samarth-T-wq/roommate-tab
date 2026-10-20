@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { EmailOtpType, Session } from "@supabase/supabase-js";
 import { CalendarDays, Clapperboard, House, ListChecks, LogOut, ShoppingCart, Wallet, type LucideIcon } from "lucide-react";
-import { supabase, type Member } from "@/lib/supabase";
+import { residentsOf, supabase, type Member } from "@/lib/supabase";
 import { loginName } from "@/lib/usernames";
 import { useLedger } from "@/lib/ledger";
 import Login from "@/components/Login";
@@ -138,6 +138,8 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
 // Expense data is loaded once here so Home's balances and the Money tab share it.
 function HouseholdView({ member, email, hiddenUserIds }: { member: Member; email?: string; hiddenUserIds: string[] }) {
   const ledger = useLedger(member.household_id, hiddenUserIds);
+  // Money uses everyone (temps split bills too); chores, rotations, polls and movies use residents only.
+  const residents = residentsOf(ledger.members);
   // Reopen on the tab you were last on. This view only renders in the browser (after login), so reading storage here is safe.
   // Storage can be unavailable (private mode), so failures are ignored.
   const [tab, setTab] = useState<Tab>(() => {
@@ -163,10 +165,10 @@ function HouseholdView({ member, email, hiddenUserIds }: { member: Member; email
         <Header member={ledger.members.find((m) => m.id === member.id) ?? member} email={email} onChanged={ledger.load} />
         {tab === "home" && <Home member={member} ledger={ledger} onOpen={open} />}
         {tab === "money" && <Expenses member={member} ledger={ledger} />}
-        {tab === "chores" && <Chores member={member} members={ledger.members} />}
+        {tab === "chores" && <Chores member={member} members={residents} />}
         {tab === "shopping" && <ShoppingList member={member} />}
-        {tab === "upcoming" && <Upcoming member={member} members={ledger.members} />}
-        {tab === "movies" && <MovieNight member={member} members={ledger.members} />}
+        {tab === "upcoming" && <Upcoming member={member} members={residents} />}
+        {tab === "movies" && <MovieNight member={member} members={residents} />}
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/90 backdrop-blur">

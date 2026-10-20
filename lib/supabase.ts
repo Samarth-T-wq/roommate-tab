@@ -13,7 +13,11 @@ export type Member = {
   user_id: string;
   display_name: string;
   avatar_url?: string | null; // public Storage link; missing until supabase/avatars.sql is run
+  role?: "resident" | "temp"; // temps only split bills; missing until supabase/residents.sql is run (= resident)
 };
+
+// People who live here: they do chores, are in rotations and count for polls. Temps only show up in Money.
+export const residentsOf = (members: Member[]) => members.filter((m) => m.role !== "temp");
 export type Household = { id: string; name: string; invite_code: string };
 
 export type Expense = {
