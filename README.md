@@ -1,6 +1,5 @@
 # Roommate Tab
 
-
 Tracks shared expenses and who owes who between roommates. It only keeps records; it never moves money.
 
 - Next.js (App Router) + Tailwind, all data access in the browser via `supabase-js`.
