@@ -25,7 +25,7 @@ Guests: run `supabase/guests.sql` once in the Supabase SQL editor. When adding a
 
 If an admin email account joined the household before admins became silent (so someone shows up twice), run `supabase/merge_admin_member.sql` in the Supabase SQL editor: fill in the admin email and that person's username, run the Check query, then the Merge block. It moves everything to the username account and deletes the admin's membership.
 
-Profile photos: run `supabase/avatars.sql` once in the Supabase SQL editor. It adds `members.avatar_url`, a public `avatars` Storage bucket (random file names, so links can't be guessed), and rules that let each member add, replace or remove only their own photo. In the app, tap your avatar (top right), then Add photo. The photo is cropped square and shrunk to a 256px JPEG in the browser before upload.
+Profile photos: run `supabase/avatars.sql` once in the Supabase SQL editor. Photos are set by roommates: you can change or remove anyone's photo in your household except your own (account sheet → Roommates' photos). It adds `members.avatar_url`, a public `avatars` Storage bucket (random file names, so links can't be guessed), `set_avatar()`, and storage rules that only allow housemates (never yourself) to write to a member's folder. Every change deletes that member's previous photo, so each person stores one ~20 KB file. Photos are cropped square and shrunk to 256px JPEG in the browser before upload.
 
 Polls: run `supabase/polls.sql` once. On Home, anyone can start a poll ("Grocery run tomorrow?") with an optional date and how many other people need to say yes (or everyone). The creator counts as a yes. Once it passes, it shows under Upcoming → Plans for the creator and everyone who voted yes.
 

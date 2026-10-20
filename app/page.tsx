@@ -162,7 +162,12 @@ function HouseholdView({ member, email, hiddenUserIds }: { member: Member; email
     <>
       <main className="mx-auto w-full max-w-md flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))]">
         {/* My row from the live member list, so a new photo shows up right away. */}
-        <Header member={ledger.members.find((m) => m.id === member.id) ?? member} email={email} onChanged={ledger.load} />
+        <Header
+          member={ledger.members.find((m) => m.id === member.id) ?? member}
+          members={ledger.members}
+          email={email}
+          onChanged={ledger.load}
+        />
         {tab === "home" && <Home member={member} ledger={ledger} onOpen={open} />}
         {tab === "money" && <Expenses member={member} ledger={ledger} />}
         {tab === "chores" && <Chores member={member} members={residents} />}
