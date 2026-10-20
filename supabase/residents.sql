@@ -64,13 +64,12 @@ begin
   end if;
 end $$;
 
--- Check the result: each repeating task's rotation (residents only), then everyone's role.
--- Run setup_all.sql before this file: it's what creates the starter rotations.
+-- Check the result. The SQL editor only shows the last query's output, so this one comes last:
+-- each repeating task's rotation, which should list only residents.
+-- (setup_all.sql must have been run before this file: it's what creates the starter rotations.)
 select t.title,
-       (select string_agg(m.display_name, ' -> ' order by r.ord)
+       (select string_agg(m.display_name || ' (' || m.role || ')', ' -> ' order by r.ord)
         from unnest(t.rotation) with ordinality as r(id, ord)
         join public.members m on m.id = r.id) as rotation
 from public.repeating_tasks t
 order by t.created_at, t.title;
-
-select display_name, role from public.members order by role, display_name;
