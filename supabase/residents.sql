@@ -1,7 +1,7 @@
 -- Residents vs temps.
 -- Residents live here: they do chores, are in every rotation, and count for polls.
 -- Temps (friends you sometimes split a bill with) only show up in Money.
--- Run in the Supabase SQL editor (project wsdirryhvdbxszflbksq). Safe to re-run.
+-- Run in the Supabase SQL editor (project wsdirryhvdbxszflbksq), AFTER setup_all.sql. Safe to re-run.
 -- To change who's who later, edit the two name lists below and run it again.
 
 alter table public.members
@@ -64,5 +64,13 @@ begin
   end if;
 end $$;
 
--- Check the result: everyone should say resident or temp as expected.
+-- Check the result: each repeating task's rotation (residents only), then everyone's role.
+-- Run setup_all.sql before this file: it's what creates the starter rotations.
+select t.title,
+       (select string_agg(m.display_name, ' -> ' order by r.ord)
+        from unnest(t.rotation) with ordinality as r(id, ord)
+        join public.members m on m.id = r.id) as rotation
+from public.repeating_tasks t
+order by t.created_at, t.title;
+
 select display_name, role from public.members order by role, display_name;
