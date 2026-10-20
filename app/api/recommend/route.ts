@@ -5,7 +5,7 @@ import { tasteProfile, type Suggestion } from "@/lib/movies";
 // Server-only: the Groq key never reaches the browser. The caller's Supabase login is
 // passed through, so RLS decides which household's movies we can read.
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const MODEL = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
 const MAX_REQUEST = 300;
 
 const SYSTEM = `You recommend movies for a group of roommates picking something to watch tonight.
@@ -75,6 +75,8 @@ export async function POST(request: Request) {
     return fail(504, "The movie AI took too long. Try again.");
   }
   if (res.status === 429) return fail(429, "Too many requests to the movie AI. Wait a minute and try again.");
+  // 404 = Groq doesn't have this model (they retire models), so say which one and how to change it.
+  if (res.status === 404) return fail(502, `Groq doesn't offer the model "${MODEL}" anymore. Set GROQ_MODEL in Vercel to a current one.`);
   if (!res.ok) return fail(502, `The movie AI returned an error (${res.status}).`);
 
   const completion = await res.json();
