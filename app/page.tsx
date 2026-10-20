@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { EmailOtpType, Session } from "@supabase/supabase-js";
-import { Clapperboard, House, ListChecks, LogOut, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarDays, Clapperboard, House, ListChecks, LogOut, ShoppingCart, Wallet, type LucideIcon } from "lucide-react";
 import { supabase, type Member } from "@/lib/supabase";
 import { loginName } from "@/lib/usernames";
 import { useLedger } from "@/lib/ledger";
@@ -13,6 +13,8 @@ import Home from "@/components/Home";
 import Chores from "@/components/Chores";
 import Expenses from "@/components/Expenses";
 import MovieNight from "@/components/MovieNight";
+import ShoppingList from "@/components/ShoppingList";
+import Upcoming from "@/components/Upcoming";
 import AdminPanel from "@/components/AdminPanel";
 
 export default function Page() {
@@ -122,11 +124,13 @@ async function fetchAccount(userId: string): Promise<Account> {
   return { member: data?.[0] ?? null, isAdmin: Boolean(admins?.isAdmin), adminUserIds: admins?.adminUserIds ?? [] };
 }
 
-type Tab = "home" | "money" | "chores" | "movies";
+type Tab = "home" | "money" | "chores" | "shopping" | "upcoming" | "movies";
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: House },
   { id: "money", label: "Money", icon: Wallet },
   { id: "chores", label: "Chores", icon: ListChecks },
+  { id: "shopping", label: "Shopping", icon: ShoppingCart },
+  { id: "upcoming", label: "Upcoming", icon: CalendarDays },
   { id: "movies", label: "Movies", icon: Clapperboard },
 ];
 
@@ -160,17 +164,19 @@ function HouseholdView({ member, email, hiddenUserIds }: { member: Member; email
         {tab === "home" && <Home member={member} ledger={ledger} onOpen={open} />}
         {tab === "money" && <Expenses member={member} ledger={ledger} />}
         {tab === "chores" && <Chores member={member} members={ledger.members} />}
+        {tab === "shopping" && <ShoppingList member={member} />}
+        {tab === "upcoming" && <Upcoming member={member} members={ledger.members} />}
         {tab === "movies" && <MovieNight member={member} members={ledger.members} />}
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/90 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto grid max-w-md grid-cols-6 px-1 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => open(id)}
               aria-current={tab === id ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium ${tab === id ? "text-primary" : "text-muted"}`}
+              className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] font-medium ${tab === id ? "text-primary" : "text-muted"}`}
             >
               <Icon size={22} strokeWidth={tab === id ? 2.25 : 1.75} />
               {label}
