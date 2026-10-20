@@ -21,3 +21,5 @@ Logins: roommates sign in with a username and password (no email). Under the hoo
 Admin accounts are silent: signing in with an admin email shows only the admin screen (make logins, reset passwords) and never a household. Admins make a username login for themselves to use the app as a roommate. Any household membership an admin account already has is hidden from everyone else's lists (`/api/admins` tells the app which accounts are admins).
 
 Guests: run `supabase/guests.sql` once in the Supabase SQL editor. When adding an expense, "Add a guest" puts a non-roommate (e.g. a friend at pizza night) in the split by name. Their share is listed under Money → Guests until someone taps Paid, and never changes roommate balances.
+
+If an admin email account joined the household before admins became silent (so someone shows up twice), run `supabase/merge_admin_member.sql` in the Supabase SQL editor: fill in the admin email and that person's username, run the Check query, then the Merge block. It moves everything to the username account and deletes the admin's membership.
