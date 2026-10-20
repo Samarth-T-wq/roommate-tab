@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Member, Movie } from "@/lib/supabase";
-import { tasteProfile, type Suggestion } from "@/lib/movies";
+import { chosen, tasteProfile, type Suggestion } from "@/lib/movies";
 
 // Server-only: the Groq key never reaches the browser. The caller's Supabase login is
 // passed through, so RLS decides which household's movies we can read.
@@ -9,11 +9,11 @@ const MODEL = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
 const MAX_REQUEST = 300;
 
 const SYSTEM = `You recommend movies for a group of roommates picking something to watch tonight.
-Use their request (mood, genre, keywords) and their taste history: lean toward what they loved, away from what they disliked.
-Only suggest real, released feature films. Never suggest anything in the "Already watched" list.
+Use their request (mood, genre, keywords), their hard requirements, and their taste history: lean toward what they loved, away from what they disliked.
+Every suggestion must meet all of the hard requirements. Only suggest real, released feature films. Never suggest anything in the "Already watched" list.
 Reply with JSON only, shaped exactly like:
 {"suggestions":[{"title":"string","year":1999,"why":"one short sentence tying it to their request and taste"}]}
-Give 5 suggestions.`;
+Give 6 suggestions.`;
 
 const fail = (status: number, error: string) => Response.json({ error }, { status });
 
@@ -26,7 +26,8 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const ask = typeof body?.request === "string" ? body.request.trim() : "";
-  if (!ask) return fail(400, "Say what you're in the mood for.");
+  const picks = chosen(body?.criteria ?? {});
+  if (!ask && picks.length === 0) return fail(400, "Say what you're in the mood for, or pick an era, length or intensity.");
   if (ask.length > MAX_REQUEST) return fail(400, `Keep it under ${MAX_REQUEST} characters.`);
 
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
@@ -65,7 +66,13 @@ export async function POST(request: Request) {
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `Taste history:\n${tasteProfile(movies, (m.data ?? []) as Member[])}\n\nTonight's request: ${ask}`,
+            content: [
+              `Taste history:\n${tasteProfile(movies, (m.data ?? []) as Member[])}`,
+              `Tonight's request: ${ask || "no specific mood, surprise us"}`,
+              picks.length > 0 && `Hard requirements: ${picks.map((p) => p.prompt).join("; ")}.`,
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
           },
         ],
       }),
@@ -83,9 +90,17 @@ export async function POST(request: Request) {
   const suggestions = parseSuggestions(completion?.choices?.[0]?.message?.content);
   if (!suggestions) return fail(502, "The movie AI sent back something unreadable. Try again.");
 
-  // The model sometimes ignores the "already watched" list, so filter by title here too.
+  // The model sometimes ignores the "already watched" list or the era, so check both here too.
+  // It's asked for 6 so there are still 5 left after dropping one.
   const watched = new Set(movies.map((x) => x.title.trim().toLowerCase()));
-  return Response.json({ suggestions: suggestions.filter((s) => !watched.has(s.title.toLowerCase())) });
+  const min = Math.max(...picks.map((p) => p.min ?? 0));
+  const max = Math.min(...picks.map((p) => p.max ?? 9999));
+  return Response.json({
+    suggestions: suggestions
+      .filter((s) => !watched.has(s.title.toLowerCase()))
+      .filter((s) => s.year === null || (s.year >= min && s.year <= max))
+      .slice(0, 5),
+  });
 }
 
 function parseSuggestions(content: unknown): Suggestion[] | null {

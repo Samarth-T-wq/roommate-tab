@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase, netColor, type Member, type Movie } from "@/lib/supabase";
-import { averageStars, movieKey, movieLabel, type Suggestion } from "@/lib/movies";
-
-const IDEAS = ["funny horror", "cozy and feel-good", "mind-bending sci-fi", "90s action, nothing too long"];
+import { CRITERIA, NO_CRITERIA, averageStars, movieKey, movieLabel, type Criteria, type Suggestion } from "@/lib/movies";
 
 export default function MovieNight({
   member,
@@ -20,6 +18,7 @@ export default function MovieNight({
   const [movies, setMovies] = useState<Movie[] | null>(null); // null = still loading
   const [error, setError] = useState("");
   const [ask, setAsk] = useState("");
+  const [criteria, setCriteria] = useState<Criteria>(NO_CRITERIA);
   const [asking, setAsking] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [title, setTitle] = useState("");
@@ -57,18 +56,19 @@ export default function MovieNight({
   }, [householdId, load]);
 
   const nameOf = (id: string) => (id === me ? "You" : members.find((m) => m.id === id)?.display_name ?? "Someone");
+  const canAsk = Boolean(ask.trim()) || Object.values(criteria).some((v) => v !== "any");
   const watchedKeys = new Set((movies ?? []).map((m) => movieKey(m.title, m.year)));
 
   async function recommend(e: React.FormEvent) {
     e.preventDefault();
-    if (!ask.trim()) return;
+    if (!canAsk) return;
     setAsking(true);
     setError("");
     const { data } = await supabase.auth.getSession();
     const res = await fetch("/api/recommend", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
-      body: JSON.stringify({ request: ask.trim() }),
+      body: JSON.stringify({ request: ask.trim(), criteria }),
     }).catch(() => null);
     const body = await res?.json().catch(() => null);
     setAsking(false);
@@ -135,17 +135,27 @@ export default function MovieNight({
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
             maxLength={300}
-            placeholder="What are you in the mood for?"
+            placeholder="Mood or keywords, e.g. funny horror"
             className="input"
           />
-          <div className="flex flex-wrap gap-1">
-            {IDEAS.map((idea) => (
-              <button key={idea} type="button" onClick={() => setAsk(idea)} className="btn-soft py-1 text-xs">
-                {idea}
-              </button>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(CRITERIA) as (keyof Criteria)[]).map((k) => (
+              <select
+                key={k}
+                value={criteria[k]}
+                onChange={(e) => setCriteria({ ...criteria, [k]: e.target.value })}
+                className={`input px-2 text-sm ${criteria[k] === "any" ? "text-muted" : "font-semibold"}`}
+                aria-label={k}
+              >
+                {CRITERIA[k].map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             ))}
           </div>
-          <button disabled={asking || !ask.trim()} className="btn w-full">
+          <button disabled={asking || !canAsk} className="btn w-full">
             {asking ? "Thinking…" : "Suggest movies"}
           </button>
         </form>
