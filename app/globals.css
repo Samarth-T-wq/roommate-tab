@@ -1,34 +1,76 @@
 @import "tailwindcss";
 
-/* The whole palette lives here. Each --color-* also becomes a Tailwind class, e.g. bg-page, text-muted, text-pos. */
+/* The whole palette lives here. Each --color-* also becomes a Tailwind class, e.g. bg-page, text-muted, text-pos.
+   Neutral zinc grays, one indigo accent for things you can tap; green/red only for money and urgency, amber for stars and "today". */
 @theme {
-  --color-page: #fff9f0;
+  --color-page: #fafafa;
   --color-card: #ffffff;
-  --color-line: #eadfcb;
-  --color-ink: #1f2937;
-  --color-muted: #6b7280;
-  --color-primary: #16a34a;
-  --color-primary-hover: #15803d;
-  --color-mint: #dcfce7;
-  --color-sun: #ffd93d;
+  --color-subtle: #f4f4f5;
+  --color-line: #e4e4e7;
+  --color-ink: #18181b;
+  --color-muted: #71717a;
+  --color-zero: #a1a1aa;
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #eef2ff;
   --color-pos: #16a34a;
   --color-neg: #dc2626;
-  --color-zero: #9ca3af;
-  --shadow-soft: 0 6px 20px rgb(31 41 55 / 0.07);
+  --color-neg-soft: #fef2f2;
+  --color-sun: #d97706;
+  --color-sun-soft: #fffbeb;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.04);
+  --animate-sheet-up: sheet-up 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
 @theme inline {
-  --font-sans: var(--font-nunito);
+  --font-sans: var(--font-geist);
+}
+
+/* Dark mode follows the phone/computer setting. Utilities read these variables, so overriding them is enough. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: #09090b;
+    --color-card: #18181b;
+    --color-subtle: #27272a;
+    --color-line: #27272a;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1aa;
+    --color-zero: #71717a;
+    --color-primary: #818cf8;
+    --color-primary-hover: #a5b4fc;
+    --color-on-primary: #09090b;
+    --color-primary-soft: #1e1b4b;
+    --color-pos: #4ade80;
+    --color-neg: #f87171;
+    --color-neg-soft: #2a1215;
+    --color-sun: #fbbf24;
+    --color-sun-soft: #2a2110;
+    --shadow-soft: none;
+  }
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 @layer base {
   body {
     background: var(--color-page);
     color: var(--color-ink);
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Form fields never inherit colors. */
@@ -49,7 +91,7 @@
   textarea:focus,
   select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgb(22 163 74 / 0.25);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
   }
   option {
     background: var(--color-card);
@@ -59,21 +101,54 @@
 
 @layer components {
   .card {
-    @apply rounded-3xl border border-line bg-card p-5 text-ink shadow-soft;
+    @apply rounded-2xl border border-line bg-card p-4 text-ink shadow-soft;
   }
   .section-title {
-    @apply mb-3 text-xl font-extrabold text-ink;
+    @apply mb-3 flex items-center gap-2 text-base font-semibold text-ink;
+  }
+  /* Small grey uppercase label above a group of rows. */
+  .eyebrow {
+    @apply mb-2 text-xs font-semibold tracking-wide text-muted uppercase;
   }
   .input {
-    @apply w-full rounded-2xl px-4 py-3 text-base;
+    @apply h-11 w-full rounded-xl px-3.5 text-[15px];
   }
   .btn {
-    @apply rounded-2xl bg-primary px-5 py-3 font-extrabold text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50;
   }
   .btn-soft {
-    @apply rounded-2xl bg-mint px-4 py-2 font-bold text-primary-hover hover:brightness-95;
+    @apply inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-card px-3 text-sm font-medium text-ink hover:bg-subtle disabled:opacity-50;
   }
+  .icon-btn {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-ink;
+  }
+  .badge {
+    @apply rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap;
+  }
+  /* Custom checkbox: rounded square that fills with the accent and a check mark. */
   .check {
-    @apply h-6 w-6 shrink-0 accent-primary;
+    @apply h-[22px] w-[22px] shrink-0 cursor-pointer appearance-none rounded-md border-[1.5px] border-line bg-card checked:border-primary checked:bg-primary;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 14px;
+  }
+  .check:checked {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  }
+  /* Two or more options in a pill, one selected (Everyone / Mine). */
+  .seg {
+    @apply grid gap-1 rounded-xl bg-subtle p-1;
+  }
+  .seg > button {
+    @apply min-h-9 rounded-lg text-sm font-medium text-muted;
+  }
+  .seg > button[aria-pressed="true"] {
+    @apply bg-card text-ink shadow-soft;
+  }
+  /* In dark mode the card color is darker than the pill, so lift the selected option instead. */
+  @media (prefers-color-scheme: dark) {
+    .seg > button[aria-pressed="true"] {
+      background: #3f3f46;
+    }
   }
 }

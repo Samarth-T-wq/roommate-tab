@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { supabase, type Member, type ShoppingItem } from "@/lib/supabase";
+import { RemoveButton } from "@/components/ui";
 
 export default function ShoppingList({ member }: { member: Member }) {
   const householdId = member.household_id;
@@ -67,33 +69,37 @@ export default function ShoppingList({ member }: { member: Member }) {
 
   // Still-needed items first, bought ones underneath.
   const sorted = [...items].sort((a, b) => Number(a.done) - Number(b.done));
+  const left = items.filter((i) => !i.done).length;
 
   return (
-    <section className="card">
-      <h2 className="section-title">🛒 Shopping list</h2>
-      <form onSubmit={add} className="mb-3 flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add an item…" className="input" />
-        <button className="btn shrink-0">Add</button>
-      </form>
-      {error && <p className="mb-2 text-sm text-neg">{error}</p>}
-      {items.length === 0 && <p className="text-sm text-muted">Nothing on the list.</p>}
-      <ul>
-        {sorted.map((item) => (
-          <li key={item.id} className="flex items-center gap-2 border-t border-line first:border-t-0">
-            <label className="flex min-h-12 flex-1 items-center gap-3 py-2">
-              <input type="checkbox" checked={item.done} onChange={() => toggle(item)} className="check" />
-              <span className={item.done ? "text-muted line-through" : "font-semibold"}>{item.name}</span>
-            </label>
-            <button
-              onClick={() => remove(item.id)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-page hover:text-neg"
-              aria-label={`Delete ${item.name}`}
-            >
-              ✕
-            </button>
-          </li>
-        ))}
-      </ul>
+    <section>
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="eyebrow mb-0">Shopping list</h2>
+        {items.length > 0 && <span className="text-sm text-muted">{left === 0 ? "All bought" : `${left} left`}</span>}
+      </div>
+      <div className="card p-0">
+        <ul>
+          {sorted.map((item) => (
+            <li key={item.id} className="flex items-center gap-3 border-b border-line px-4">
+              <label className="flex min-h-13 min-w-0 flex-1 items-center gap-3 py-2">
+                <input type="checkbox" checked={item.done} onChange={() => toggle(item)} className="check" />
+                <span className={`truncate ${item.done ? "text-muted line-through" : "font-medium"}`}>{item.name}</span>
+              </label>
+              <RemoveButton onClick={() => remove(item.id)} label={`Delete ${item.name}`} />
+            </li>
+          ))}
+        </ul>
+        <form onSubmit={add} className="flex items-center gap-3 px-4">
+          <Plus size={20} className="shrink-0 text-muted" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Add an item"
+            className="h-13 min-w-0 flex-1 border-0! bg-transparent! shadow-none!"
+          />
+        </form>
+      </div>
+      {error && <p className="mt-2 text-sm text-neg">{error}</p>}
     </section>
   );
 }

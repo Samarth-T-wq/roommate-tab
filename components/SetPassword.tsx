@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Lock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // Lets a logged-in user set or change their password, e.g. after logging in with an email code.
@@ -30,14 +31,15 @@ export default function SetPassword() {
           setOpen(true);
           setSaved(false);
         }}
-        className="mt-3 block text-sm text-muted underline"
+        className="btn-soft h-11 w-full"
       >
-        {saved ? "Password saved ✓" : "Set a password"}
+        {saved ? <Check size={16} /> : <Lock size={16} />}
+        {saved ? "Password saved" : "Change password"}
       </button>
     );
 
   return (
-    <form onSubmit={save} className="card mt-3 space-y-2">
+    <form onSubmit={save} className="space-y-2 rounded-2xl bg-subtle p-3">
       <label className="block text-sm font-medium">New password</label>
       <input
         type="password"

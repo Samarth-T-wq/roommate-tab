@@ -7,22 +7,22 @@ export type Suggestion = { title: string; year: number | null; why: string };
 type Option = { value: string; label: string; prompt?: string; min?: number; max?: number };
 export const CRITERIA = {
   era: [
-    { value: "any", label: "Any era" },
-    { value: "new", label: "New (2020+)", prompt: "released 2020 or later", min: 2020 },
-    { value: "modern", label: "2000s–2010s", prompt: "released 2000–2019", min: 2000, max: 2019 },
-    { value: "old", label: "Old (1970–99)", prompt: "released 1970–1999", min: 1970, max: 1999 },
-    { value: "super-old", label: "Super old (pre-1970)", prompt: "released before 1970", max: 1969 },
+    { value: "any", label: "Era" },
+    { value: "new", label: "2020+", prompt: "released 2020 or later", min: 2020 },
+    { value: "modern", label: "2000s–10s", prompt: "released 2000–2019", min: 2000, max: 2019 },
+    { value: "old", label: "70s–90s", prompt: "released 1970–1999", min: 1970, max: 1999 },
+    { value: "super-old", label: "Pre-1970", prompt: "released before 1970", max: 1969 },
   ],
   length: [
-    { value: "any", label: "Any length" },
-    { value: "short", label: "Under 90 min", prompt: "runtime under 90 minutes" },
-    { value: "normal", label: "About 2 hours", prompt: "runtime roughly 90–130 minutes" },
-    { value: "epic", label: "Long is fine", prompt: "long epics over 2.5 hours are welcome" },
+    { value: "any", label: "Length" },
+    { value: "short", label: "Under 90m", prompt: "runtime under 90 minutes" },
+    { value: "normal", label: "About 2h", prompt: "runtime roughly 90–130 minutes" },
+    { value: "epic", label: "Long is ok", prompt: "long epics over 2.5 hours are welcome" },
   ],
   intensity: [
-    { value: "any", label: "Any intensity" },
-    { value: "light", label: "Light & easy", prompt: "light and easy to watch, nothing disturbing or heavy" },
-    { value: "medium", label: "Some tension", prompt: "some tension or scares are fine, but nothing too graphic" },
+    { value: "any", label: "Intensity" },
+    { value: "light", label: "Light", prompt: "light and easy to watch, nothing disturbing or heavy" },
+    { value: "medium", label: "Tense", prompt: "some tension or scares are fine, but nothing too graphic" },
     { value: "intense", label: "Intense", prompt: "intense, gripping or graphic is welcome" },
   ],
 } satisfies Record<string, Option[]>;

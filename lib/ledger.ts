@@ -62,6 +62,21 @@ export function netByMember(expenses: Expense[], settlements: Settlement[]): Rec
   return net;
 }
 
+// What `other` owes me (positive) or I owe them (negative), from expenses between just us two and settlements.
+export function balanceWith(me: string, other: string, expenses: Expense[], settlements: Settlement[]): number {
+  let cents = 0;
+  for (const e of expenses)
+    for (const s of e.expense_splits) {
+      if (e.paid_by === me && s.member_id === other) cents += s.share_cents;
+      if (e.paid_by === other && s.member_id === me) cents -= s.share_cents;
+    }
+  for (const s of settlements) {
+    if (s.from_member === other && s.to_member === me) cents -= s.cents;
+    if (s.from_member === me && s.to_member === other) cents += s.cents;
+  }
+  return cents;
+}
+
 async function fetchLedger(householdId: string) {
   const [m, e, s] = await Promise.all([
     supabase.from("members").select("*").eq("household_id", householdId).order("display_name"),

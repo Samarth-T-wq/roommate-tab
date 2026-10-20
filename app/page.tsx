@@ -2,21 +2,20 @@
 
 import { useEffect, useState } from "react";
 import type { EmailOtpType, Session } from "@supabase/supabase-js";
+import { Clapperboard, House, ListChecks, LogOut, Wallet, type LucideIcon } from "lucide-react";
 import { supabase, type Member } from "@/lib/supabase";
-import Login from "@/components/Login";
-import SetPassword from "@/components/SetPassword";
-import AdminPanel from "@/components/AdminPanel";
 import { loginName } from "@/lib/usernames";
+import { useLedger } from "@/lib/ledger";
+import Login from "@/components/Login";
 import Onboard from "@/components/Onboard";
 import Header from "@/components/Header";
-import ShoppingList from "@/components/ShoppingList";
+import Home from "@/components/Home";
 import Chores from "@/components/Chores";
 import Expenses from "@/components/Expenses";
-import Roommates from "@/components/Roommates";
 import MovieNight from "@/components/MovieNight";
-import { useLedger } from "@/lib/ledger";
+import AdminPanel from "@/components/AdminPanel";
 
-export default function Home() {
+export default function Page() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   // Membership is stored with the user it belongs to, so a different login never sees a stale one.
   const [authNotice, setAuthNotice] = useState("");
@@ -63,29 +62,26 @@ export default function Home() {
   }, [userId]);
   const member = membership && membership.userId === userId ? membership.member : undefined;
 
-  let content;
-  if (session === undefined || (session && member === undefined)) {
-    content = <p className="text-center text-sm text-muted">Loading…</p>;
-  } else if (!session) {
-    content = <Login notice={authNotice} />;
-  } else if (!member) {
-    content = <Onboard onDone={() => loadMember(session.user.id)} />;
-  } else {
-    content = <HouseholdView member={member} />;
-  }
+  // Signed in and in a household: the tabbed app.
+  if (session && member) return <HouseholdView member={member} email={session.user.email} />;
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 py-8 pb-16">
-      {!member && <h1 className="mb-6 text-4xl font-black tracking-tight">Roommate Tab</h1>}
-      {session && <AdminPanel />}
-      {content}
-      {session && (
-        <>
-          <button onClick={() => supabase.auth.signOut()} className="mt-10 text-sm text-muted underline">
+    <main className="mx-auto w-full max-w-md flex-1 px-4 pt-12 pb-16">
+      <h1 className="text-3xl font-semibold tracking-tight">Roommate Tab</h1>
+      <p className="mt-1 mb-8 text-muted">Bills, chores, groceries and movie night for your place.</p>
+      {session === undefined || (session && member === undefined) ? (
+        <p className="text-center text-sm text-muted">Loading…</p>
+      ) : !session ? (
+        <Login notice={authNotice} />
+      ) : (
+        <div className="space-y-4">
+          <Onboard onDone={() => loadMember(session.user.id)} />
+          <AdminPanel />
+          <button onClick={() => supabase.auth.signOut()} className="btn-soft h-11 w-full">
+            <LogOut size={16} />
             Sign out ({loginName(session.user.email)})
           </button>
-          <SetPassword />
-        </>
+        </div>
       )}
     </main>
   );
@@ -96,19 +92,61 @@ async function fetchMember(userId: string): Promise<Member | null> {
   return data?.[0] ?? null;
 }
 
-// The main screen. Expense data is loaded once here so the roommate chips and the expense sections share it.
-function HouseholdView({ member }: { member: Member }) {
+type Tab = "home" | "money" | "chores" | "movies";
+const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: "home", label: "Home", icon: House },
+  { id: "money", label: "Money", icon: Wallet },
+  { id: "chores", label: "Chores", icon: ListChecks },
+  { id: "movies", label: "Movies", icon: Clapperboard },
+];
+
+// The main screen: header, one tab at a time, and the tab bar.
+// Expense data is loaded once here so Home's balances and the Money tab share it.
+function HouseholdView({ member, email }: { member: Member; email?: string }) {
   const ledger = useLedger(member.household_id);
+  // Reopen on the tab you were last on. This view only renders in the browser (after login), so reading storage here is safe.
+  // Storage can be unavailable (private mode), so failures are ignored.
+  const [tab, setTab] = useState<Tab>(() => {
+    try {
+      const saved = localStorage.getItem("tab");
+      return TABS.find((t) => t.id === saved)?.id ?? "home";
+    } catch {
+      return "home";
+    }
+  });
+  function open(t: Tab) {
+    setTab(t);
+    window.scrollTo(0, 0);
+    try {
+      localStorage.setItem("tab", t);
+    } catch {}
+  }
+
   return (
     <>
-      <Header householdId={member.household_id} />
-      <Roommates me={member.id} members={ledger.members} nets={ledger.nets} />
-      <div className="space-y-6">
-        <ShoppingList member={member} />
-        <Chores member={member} members={ledger.members} nets={ledger.nets} />
-        <Expenses member={member} ledger={ledger} />
-        <MovieNight member={member} members={ledger.members} nets={ledger.nets} />
-      </div>
+      <main className="mx-auto w-full max-w-md flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+        <Header member={member} email={email} />
+        {tab === "home" && <Home member={member} ledger={ledger} onOpen={open} />}
+        {tab === "money" && <Expenses member={member} ledger={ledger} />}
+        {tab === "chores" && <Chores member={member} members={ledger.members} />}
+        {tab === "movies" && <MovieNight member={member} members={ledger.members} />}
+      </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/90 backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => open(id)}
+              aria-current={tab === id ? "page" : undefined}
+              className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium ${tab === id ? "text-primary" : "text-muted"}`}
+            >
+              <Icon size={22} strokeWidth={tab === id ? 2.25 : 1.75} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </nav>
     </>
   );
 }

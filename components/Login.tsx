@@ -50,15 +50,15 @@ export default function Login({ notice }: { notice?: string }) {
 
   return (
     <form onSubmit={submit} className="card space-y-3">
-      {notice && <p className="rounded-2xl bg-mint p-3 text-sm text-ink">{notice}</p>}
+      {notice && <p className="rounded-xl bg-primary-soft p-3 text-sm text-ink">{notice}</p>}
 
-      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-page p-1">
+      <div className="seg grid-cols-2">
         {[false, true].map((a) => (
           <button
             key={String(a)}
             type="button"
             onClick={() => switchTo(a)}
-            className={`min-h-10 rounded-xl text-sm font-bold ${admin === a ? "bg-primary text-white" : "text-muted"}`}
+            aria-pressed={admin === a}
           >
             {a ? "Admin" : "Roommate"}
           </button>
@@ -116,7 +116,7 @@ export default function Login({ notice }: { notice?: string }) {
       </button>
       {error && <p className="text-sm text-neg">{error}</p>}
       {admin && codeSent ? (
-        <button type="button" onClick={() => switchTo(true)} className="text-sm text-muted underline">
+        <button type="button" onClick={() => switchTo(true)} className="text-sm font-medium text-primary">
           Use a different email
         </button>
       ) : (

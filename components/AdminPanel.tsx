@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { KeyRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Account = { username: string; created_at: string };
@@ -82,16 +83,20 @@ export default function AdminPanel() {
 
   if (!open)
     return (
-      <button onClick={() => setOpen(true)} className="btn-soft mb-6 w-full">
-        🔑 Manage logins
+      <button onClick={() => setOpen(true)} className="btn-soft h-11 w-full">
+        <KeyRound size={16} />
+        Manage logins
       </button>
     );
 
   return (
-    <section className="card mb-6">
-      <div className="flex items-center">
-        <h2 className="section-title flex-1">🔑 Manage logins</h2>
-        <button onClick={() => setOpen(false)} className="px-2 text-sm text-muted underline">
+    <section className="rounded-2xl bg-subtle p-3">
+      <div className="mb-2 flex items-center">
+        <h2 className="flex flex-1 items-center gap-2 font-semibold">
+          <KeyRound size={16} />
+          Manage logins
+        </h2>
+        <button onClick={() => setOpen(false)} className="px-2 text-sm font-medium text-primary">
           Close
         </button>
       </div>
@@ -121,7 +126,7 @@ export default function AdminPanel() {
       </form>
 
       {error && <p className="mb-2 text-sm font-bold text-neg">{error}</p>}
-      {info && <p className="mb-2 rounded-2xl bg-mint p-3 text-sm text-ink">{info}</p>}
+      {info && <p className="mb-2 rounded-xl bg-primary-soft p-3 text-sm text-ink">{info}</p>}
 
       {accounts.length === 0 && <p className="text-sm text-muted">No username logins yet.</p>}
       <ul>

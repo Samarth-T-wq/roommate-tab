@@ -34,7 +34,7 @@ export default function Onboard({ onDone }: { onDone: () => void }) {
           run("create_household", { h_name: householdName.trim(), d_name: displayName.trim() });
         }}
       >
-        <h2 className="text-xl font-extrabold">Create a household</h2>
+        <h2 className="font-semibold">Create a household</h2>
         <input required value={householdName} onChange={(e) => setHouseholdName(e.target.value)} placeholder="Apartment 4B" className="input" />
         <button disabled={busy} className="btn w-full">Create</button>
       </form>
@@ -46,7 +46,7 @@ export default function Onboard({ onDone }: { onDone: () => void }) {
           run("join_household", { code: code.trim(), d_name: displayName.trim() });
         }}
       >
-        <h2 className="text-xl font-extrabold">Join with an invite code</h2>
+        <h2 className="font-semibold">Join with an invite code</h2>
         <input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="Invite code" className="input" />
         <button disabled={busy} className="btn w-full">Join</button>
       </form>

@@ -1,18 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { supabase, netColor, type Member, type Movie } from "@/lib/supabase";
+import { Clapperboard, Sparkles, Star } from "lucide-react";
+import { supabase, type Member, type Movie } from "@/lib/supabase";
 import { CRITERIA, NO_CRITERIA, averageStars, movieKey, movieLabel, type Criteria, type Suggestion } from "@/lib/movies";
 
-export default function MovieNight({
-  member,
-  members,
-  nets,
-}: {
-  member: Member;
-  members: Member[];
-  nets: Record<string, number>;
-}) {
+import { RemoveButton } from "@/components/ui";
+
+// Five tappable stars; filled up to `value`.
+function Stars({ value, onRate, label }: { value: number; onRate?: (n: number) => void; label: string }) {
+  return (
+    <div className="flex items-center" role="group" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((n) =>
+        onRate ? (
+          <button key={n} onClick={() => onRate(n)} className="flex h-9 w-8 items-center justify-center" aria-label={`${n} star${n > 1 ? "s" : ""}`} aria-pressed={n <= value}>
+            <Star size={20} className={n <= value ? "fill-sun text-sun" : "text-line"} />
+          </button>
+        ) : (
+          <Star key={n} size={12} className={n <= value ? "fill-sun text-sun" : "text-line"} />
+        )
+      )}
+    </div>
+  );
+}
+
+export default function MovieNight({ member, members }: { member: Member; members: Member[] }) {
   const householdId = member.household_id;
   const me = member.id;
   const [movies, setMovies] = useState<Movie[] | null>(null); // null = still loading
@@ -128,130 +140,128 @@ export default function MovieNight({
 
   return (
     <div className="space-y-6">
-      <section className="card">
-        <h2 className="section-title">🍿 Movie night</h2>
-        <form onSubmit={recommend} className="space-y-2">
+      <form onSubmit={recommend} className="card space-y-3">
+        <h2 className="font-semibold">What are you in the mood for?</h2>
+        <div className="relative">
+          <Sparkles size={18} className="pointer-events-none absolute top-3.5 left-3.5 text-muted" />
           <input
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
             maxLength={300}
             placeholder="Mood or keywords, e.g. funny horror"
-            className="input"
+            className="input pl-10"
           />
-          <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(CRITERIA) as (keyof Criteria)[]).map((k) => (
-              <select
-                key={k}
-                value={criteria[k]}
-                onChange={(e) => setCriteria({ ...criteria, [k]: e.target.value })}
-                className={`input px-2 text-sm ${criteria[k] === "any" ? "text-muted" : "font-semibold"}`}
-                aria-label={k}
-              >
-                {CRITERIA[k].map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            ))}
-          </div>
-          <button disabled={asking || !canAsk} className="btn w-full">
-            {asking ? "Thinking…" : "Suggest movies"}
-          </button>
-        </form>
-        <p className="mt-2 text-xs text-muted">Suggestions use everyone&apos;s ratings below. Rate more to get better picks.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {(Object.keys(CRITERIA) as (keyof Criteria)[]).map((k) => (
+            <select
+              key={k}
+              value={criteria[k]}
+              onChange={(e) => setCriteria({ ...criteria, [k]: e.target.value })}
+              className={`input h-10 px-2 text-sm ${criteria[k] === "any" ? "text-muted" : "border-primary! font-medium"}`}
+              aria-label={k}
+            >
+              {CRITERIA[k].map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ))}
+        </div>
+        <button disabled={asking || !canAsk} className="btn w-full">
+          <Sparkles size={18} />
+          {asking ? "Thinking…" : "Suggest movies"}
+        </button>
+        <p className="text-xs text-muted">Picks use everyone&apos;s ratings below. Rate more to get better ones.</p>
+      </form>
 
-        {error && <p className="mt-3 text-sm font-bold text-neg">{error}</p>}
+      {error && <p className="text-sm font-medium text-neg">{error}</p>}
 
-        {suggestions.length > 0 && (
-          <ul className="mt-4">
+      {suggestions.length > 0 && (
+        <section>
+          <h2 className="eyebrow">Tonight&apos;s picks</h2>
+          <ul className="card p-0">
             {suggestions.map((s) => {
               const logged = watchedKeys.has(movieKey(s.title, s.year));
               return (
-                <li key={movieKey(s.title, s.year)} className="flex items-center gap-2 border-t border-line py-3 first:border-t-0">
+                <li key={movieKey(s.title, s.year)} className="flex items-start gap-3 border-t border-line px-4 py-3 first:border-t-0">
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold">{movieLabel(s)}</p>
-                    {s.why && <p className="text-sm text-muted">{s.why}</p>}
+                    <p className="font-medium">{s.title}</p>
+                    <p className="text-sm text-muted">
+                      {s.year && <>{s.year} · </>}
+                      {s.why}
+                    </p>
                   </div>
-                  <button
-                    disabled={logged}
-                    onClick={() => logMovie(s.title, s.year)}
-                    className="btn-soft shrink-0 text-sm"
-                  >
-                    {logged ? "Logged ✓" : "We watched it"}
+                  <button disabled={logged} onClick={() => logMovie(s.title, s.year)} className="btn-soft shrink-0">
+                    {logged ? "Logged" : "Watched"}
                   </button>
                 </li>
               );
             })}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section className="card">
-        <h2 className="section-title">🎬 Watched</h2>
-        <form onSubmit={add} className="mb-4 flex gap-2">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Log a movie…" className="input min-w-0" />
-          <input
-            inputMode="numeric"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            placeholder="Year"
-            className="input w-20 shrink-0"
-            aria-label="Year"
-          />
-          <button className="btn shrink-0">Add</button>
-        </form>
+      <section>
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="eyebrow mb-0">Watched</h2>
+          {movies && movies.length > 0 && <span className="text-sm text-muted">{movies.length} movies</span>}
+        </div>
+        <div className="card p-0">
+          <form onSubmit={add} className="flex items-center gap-2 border-b border-line p-2 pl-4">
+            <Clapperboard size={18} className="shrink-0 text-muted" />
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Log a movie"
+              className="h-10 min-w-0 flex-1 border-0! bg-transparent! shadow-none!"
+            />
+            <input
+              inputMode="numeric"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              placeholder="Year"
+              className="input h-9 w-18 shrink-0 px-2 text-sm"
+              aria-label="Year"
+            />
+            <button className="btn h-9 shrink-0 px-3 text-sm">Add</button>
+          </form>
 
-        {movies === null && <p className="text-sm text-muted">Loading…</p>}
-        {movies?.length === 0 && <p className="text-sm text-muted">Nothing logged yet. Rate what you watch to build your taste profile.</p>}
-        <ul>
-          {(movies ?? []).map((m) => {
-            const mine = m.movie_ratings.find((r) => r.member_id === me)?.stars ?? 0;
-            const others = m.movie_ratings.filter((r) => r.member_id !== me);
-            const avg = averageStars(m);
-            return (
-              <li key={m.id} className="flex items-start gap-2 border-t border-line py-3 first:border-t-0">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">
-                    {movieLabel(m)}
-                    {avg !== null && <span className="ml-2 text-sm text-muted">avg {avg.toFixed(1)}★</span>}
-                  </p>
-                  <div className="flex items-center" role="group" aria-label={`Your rating for ${m.title}`}>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => rate(m, n)}
-                        className={`flex h-9 w-8 items-center justify-center text-xl ${n <= mine ? "text-sun" : "text-line"}`}
-                        aria-label={`${n} star${n > 1 ? "s" : ""}`}
-                        aria-pressed={n <= mine}
-                      >
-                        ★
-                      </button>
-                    ))}
-                    {!mine && <span className="ml-1 text-xs text-muted">rate it</span>}
-                  </div>
-                  {others.length > 0 && (
-                    <p className="text-xs text-muted">
-                      {others.map((r, i) => (
-                        <span key={r.member_id}>
-                          {i > 0 && " · "}
-                          <b className={netColor(nets[r.member_id] ?? 0)}>{nameOf(r.member_id)}</b> {r.stars}★
-                        </span>
-                      ))}
+          {movies === null && <p className="p-4 text-sm text-muted">Loading…</p>}
+          {movies?.length === 0 && <p className="p-4 text-sm text-muted">Nothing logged yet. Rate what you watch to build your taste profile.</p>}
+          <ul>
+            {(movies ?? []).map((m) => {
+              const mine = m.movie_ratings.find((r) => r.member_id === me)?.stars ?? 0;
+              const others = m.movie_ratings.filter((r) => r.member_id !== me);
+              const avg = averageStars(m);
+              return (
+                <li key={m.id} className="flex items-start gap-2 border-t border-line py-3 pr-2 pl-4 first:border-t-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {m.title}
+                      {m.year && <span className="ml-1.5 font-normal text-muted">{m.year}</span>}
                     </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => remove(m)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted hover:bg-page hover:text-neg"
-                  aria-label={`Remove ${m.title}`}
-                >
-                  ✕
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="-ml-1.5 flex items-center gap-2">
+                      <Stars value={mine} onRate={(n) => rate(m, n)} label={`Your rating for ${m.title}`} />
+                      {avg !== null && <span className="text-xs text-muted">avg {avg.toFixed(1)}</span>}
+                    </div>
+                    {others.length > 0 && (
+                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+                        {others.map((r) => (
+                          <span key={r.member_id} className="flex items-center gap-1">
+                            {nameOf(r.member_id)} <Stars value={r.stars} label={`${nameOf(r.member_id)}: ${r.stars} stars`} />
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <RemoveButton onClick={() => remove(m)} label={`Remove ${m.title}`} />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </section>
     </div>
   );
