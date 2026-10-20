@@ -39,7 +39,7 @@ export default function Home({
               const cents = balanceWith(me, m.id, expenses, settlements);
               return (
                 <span key={m.id} className="flex shrink-0 items-center gap-2 rounded-full border border-line py-1 pr-3 pl-1 text-sm">
-                  <Avatar id={m.id} name={m.display_name} size={24} />
+                  <Avatar member={m} size={24} />
                   {m.display_name}
                   <b className={`font-semibold tabular-nums ${netColor(cents)}`}>{signedDollars(cents)}</b>
                 </span>

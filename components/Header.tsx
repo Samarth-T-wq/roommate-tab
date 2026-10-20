@@ -6,9 +6,11 @@ import { supabase, type Household, type Member } from "@/lib/supabase";
 import { loginName } from "@/lib/usernames";
 import { Avatar, Sheet } from "@/components/ui";
 import SetPassword from "@/components/SetPassword";
+import PhotoPicker from "@/components/PhotoPicker";
 
-// Household name, plus the account button that opens invite code, password and sign out.
-export default function Header({ member, email }: { member: Member; email?: string }) {
+// Household name, plus the account button that opens my photo, invite code, password and sign out.
+// `onChanged` reloads the household after I change my photo.
+export default function Header({ member, email, onChanged }: { member: Member; email?: string; onChanged: () => void }) {
   const [household, setHousehold] = useState<Household | null>(null);
   const [copied, setCopied] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -43,11 +45,12 @@ export default function Header({ member, email }: { member: Member; email?: stri
     <header className="sticky top-0 z-20 -mx-4 mb-4 flex items-center gap-3 bg-page/90 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
       <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">{household?.name ?? " "}</h1>
       <button onClick={() => setMenu(true)} aria-label="Account" className="rounded-full">
-        <Avatar id={member.id} name={member.display_name} />
+        <Avatar member={member} />
       </button>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={member.display_name}>
         <div className="space-y-5">
+          <PhotoPicker member={member} onChanged={onChanged} />
           {household && (
             <div>
               <h4 className="eyebrow">Invite code</h4>

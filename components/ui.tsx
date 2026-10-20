@@ -1,24 +1,33 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Plus, X } from "lucide-react";
+import type { Member } from "@/lib/supabase";
 
 // Small building blocks shared by every tab.
 
 const AVATAR_COLORS = ["#4f46e5", "#0d9488", "#db2777", "#ea580c", "#7c3aed", "#0284c7"];
 
-// Round initials badge; the color is stable per member.
-export function Avatar({ id, name, size = 32 }: { id: string; name: string; size?: number }) {
-  const hash = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
-  const initials = name.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+// Round profile photo, or colored initials when there's no photo (or it fails to load). The color is stable per member.
+export function Avatar({ member, size = 32 }: { member: Pick<Member, "id" | "display_name" | "avatar_url">; size?: number }) {
+  const [broken, setBroken] = useState<string | null>(null); // the photo link that failed, if any
+  const hash = [...member.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+  const initials = member.display_name.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+  const photo = member.avatar_url && member.avatar_url !== broken ? member.avatar_url : null;
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white"
       style={{ width: size, height: size, fontSize: size * 0.38, background: AVATAR_COLORS[hash % AVATAR_COLORS.length] }}
       aria-hidden
     >
-      {initials}
+      {photo ? (
+        // Plain <img>: photos are already 256px JPEGs on Supabase, so next/image's resizing adds nothing.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="" width={size} height={size} className="h-full w-full object-cover" onError={() => setBroken(photo)} />
+      ) : (
+        initials
+      )}
     </span>
   );
 }

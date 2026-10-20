@@ -36,6 +36,7 @@ export function useLedger(householdId: string, hiddenUserIds: string[] = []) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "settlements", filter }, load)
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "settlements" }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter }, load)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "members", filter }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "expense_guests", filter }, load)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "expense_guests", filter }, load)
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "expense_guests" }, load)

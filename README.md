@@ -23,3 +23,5 @@ Admin accounts are silent: signing in with an admin email shows only the admin s
 Guests: run `supabase/guests.sql` once in the Supabase SQL editor. When adding an expense, "Add a guest" puts a non-roommate (e.g. a friend at pizza night) in the split by name. Their share is listed under Money → Guests until someone taps Paid, and never changes roommate balances.
 
 If an admin email account joined the household before admins became silent (so someone shows up twice), run `supabase/merge_admin_member.sql` in the Supabase SQL editor: fill in the admin email and that person's username, run the Check query, then the Merge block. It moves everything to the username account and deletes the admin's membership.
+
+Profile photos: run `supabase/avatars.sql` once in the Supabase SQL editor. It adds `members.avatar_url`, a public `avatars` Storage bucket (random file names, so links can't be guessed), and rules that let each member add, replace or remove only their own photo. In the app, tap your avatar (top right), then Add photo. The photo is cropped square and shrunk to a 256px JPEG in the browser before upload.

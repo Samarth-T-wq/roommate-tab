@@ -7,7 +7,13 @@ export const supabase = createClient(
   { auth: { flowType: "pkce" } }
 );
 
-export type Member = { id: string; household_id: string; user_id: string; display_name: string };
+export type Member = {
+  id: string;
+  household_id: string;
+  user_id: string;
+  display_name: string;
+  avatar_url?: string | null; // public Storage link; missing until supabase/avatars.sql is run
+};
 export type Household = { id: string; name: string; invite_code: string };
 
 export type Expense = {

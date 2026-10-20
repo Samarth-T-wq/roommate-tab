@@ -142,9 +142,9 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
               <ul className="card p-0">
                 {debts.map((d) => (
                   <li key={`${d.from.id}-${d.to.id}`} className="flex min-h-14 items-center gap-2 border-t border-line px-4 first:border-t-0">
-                    <Avatar id={d.from.id} name={d.from.display_name} size={28} />
+                    <Avatar member={d.from} size={28} />
                     <ArrowRight size={14} className="shrink-0 text-muted" />
-                    <Avatar id={d.to.id} name={d.to.display_name} size={28} />
+                    <Avatar member={d.to} size={28} />
                     <span className="ml-1 min-w-0 flex-1 truncate">
                       <b className="font-medium">{nameOf(d.from.id)}</b> {d.from.id === me ? "owe" : "owes"}{" "}
                       <b className="font-medium">{d.to.id === me ? "you" : d.to.display_name}</b>
@@ -165,7 +165,7 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
           {balances.map(({ other, items, net }) => (
             <li key={other.id} className="border-t border-line first:border-t-0">
               <div className="flex min-h-16 items-center gap-3 px-4">
-                <Avatar id={other.id} name={other.display_name} />
+                <Avatar member={other} />
                 <button
                   onClick={() => setOpen(open === other.id ? null : other.id)}
                   disabled={items.length === 0}
@@ -517,7 +517,7 @@ function AddExpense({
                     i !== -1 ? "border-primary bg-primary-soft" : "border-line text-muted opacity-60"
                   }`}
                 >
-                  <Avatar id={m.id} name={m.display_name} size={24} />
+                  <Avatar member={m} size={24} />
                   {m.id === me ? "You" : m.display_name}
                   {i !== -1 && even[i] !== undefined && <span className="text-muted tabular-nums">{dollars(even[i])}</span>}
                 </button>
