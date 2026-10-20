@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ArrowLeftRight, ChevronDown, Receipt, UserPlus } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, ChevronDown, Receipt, UserPlus } from "lucide-react";
 import { supabase, dollars, toCents, splitEvenly, type ExpenseGuest, type Member } from "@/lib/supabase";
-import type { Ledger } from "@/lib/ledger";
+import { balanceWith, type Ledger } from "@/lib/ledger";
 import { Avatar, Fab, RemoveButton, Sheet } from "@/components/ui";
 
 // tone "plus" = owed to / paid to me (green, +), "minus" = I owe (red, -), "plain" = neither.
@@ -39,6 +39,8 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
   const [open, setOpen] = useState<string | null>(null);
   const [settle, setSettle] = useState<{ other: string; amount: string } | null>(null);
   const [adding, setAdding] = useState(false);
+  // "you" = my balance with each roommate; "everyone" = every open debt in the house, for transparency.
+  const [view, setView] = useState<"you" | "everyone">("you");
 
   const nameOf = (id: string) => (id === me ? "You" : members.find((m) => m.id === id)?.display_name ?? "Someone");
 
@@ -68,6 +70,17 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
       const items = itemsWith(m.id);
       return { other: m, items, net: items.reduce((t, i) => t + i.cents, 0) };
     });
+
+  // Every pair of roommates with money between them, biggest first. `from` owes `to`.
+  const debts = members
+    .flatMap((a, i) =>
+      members.slice(i + 1).map((b) => {
+        const cents = balanceWith(a.id, b.id, expenses, settlements); // positive = b owes a
+        return cents > 0 ? { from: b, to: a, cents } : { from: a, to: b, cents: -cents };
+      })
+    )
+    .filter((d) => d.cents > 0)
+    .sort((x, y) => y.cents - x.cents);
 
   async function confirmSettle(other: string, net: number) {
     const cents = toCents(settle?.amount ?? "");
@@ -110,9 +123,45 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="eyebrow">Balances</h2>
-        {balances.length === 0 && <div className="card py-6 text-center text-sm text-muted">No roommates yet. Share the invite code.</div>}
-        <ul className="card p-0">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="eyebrow mb-0">Balances</h2>
+          <div className="seg w-44 grid-cols-2 p-0.5">
+            {(["you", "everyone"] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className="min-h-7! text-xs!">
+                {v === "you" ? "You" : "Everyone"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {view === "everyone" && (
+          <>
+            {debts.length === 0 ? (
+              <div className="card py-6 text-center text-sm text-muted">Nobody owes anybody. All settled up.</div>
+            ) : (
+              <ul className="card p-0">
+                {debts.map((d) => (
+                  <li key={`${d.from.id}-${d.to.id}`} className="flex min-h-14 items-center gap-2 border-t border-line px-4 first:border-t-0">
+                    <Avatar id={d.from.id} name={d.from.display_name} size={28} />
+                    <ArrowRight size={14} className="shrink-0 text-muted" />
+                    <Avatar id={d.to.id} name={d.to.display_name} size={28} />
+                    <span className="ml-1 min-w-0 flex-1 truncate">
+                      <b className="font-medium">{nameOf(d.from.id)}</b> {d.from.id === me ? "owe" : "owes"}{" "}
+                      <b className="font-medium">{d.to.id === me ? "you" : d.to.display_name}</b>
+                    </span>
+                    <Money tone={d.to.id === me ? "plus" : d.from.id === me ? "minus" : "plain"} cents={d.cents} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-xs text-muted">Everyone in the house sees this list.</p>
+          </>
+        )}
+
+        {view === "you" && balances.length === 0 && (
+          <div className="card py-6 text-center text-sm text-muted">No roommates yet. Share the invite code.</div>
+        )}
+        <ul className={`card p-0 ${view === "you" ? "" : "hidden"}`}>
           {balances.map(({ other, items, net }) => (
             <li key={other.id} className="border-t border-line first:border-t-0">
               <div className="flex min-h-16 items-center gap-3 px-4">
