@@ -27,7 +27,10 @@ export default function Home({
   const repeating = useRepeating(member.household_id, me);
   const [mineOnly, setMineOnly] = useState(true);
   const myNet = nets[me] ?? 0;
-  const others = members.filter((m) => m.id !== me);
+  // Roommates always; temps only while there's money open with them.
+  const others = members.filter(
+    (m) => m.id !== me && (m.role !== "temp" || balanceWith(me, m.id, expenses, settlements) !== 0)
+  );
   const today = todayString();
   // Due today or late; "Mine" means assigned to me, or to anyone.
   const due = todo.filter(

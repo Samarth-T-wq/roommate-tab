@@ -69,7 +69,9 @@ export default function Expenses({ member, ledger }: { member: Member; ledger: L
     .map((m) => {
       const items = itemsWith(m.id);
       return { other: m, items, net: items.reduce((t, i) => t + i.cents, 0) };
-    });
+    })
+    // Temps (friends who only sometimes split a bill) only show while there's money open with them.
+    .filter((b) => b.other.role !== "temp" || b.net !== 0);
 
   // Every pair of roommates with money between them, biggest first. `from` owes `to`.
   const debts = members
@@ -350,8 +352,9 @@ function AddExpense({
   const [description, setDescription] = useState("");
   const [total, setTotal] = useState("");
   const [payer, setPayer] = useState(me);
-  // Track who is *un*checked, so everyone (including roommates who join later) starts checked.
-  const [excluded, setExcluded] = useState<string[]>([]);
+  // Track who is *un*checked, so every roommate (including ones who join later) starts checked.
+  // Temps start unchecked: tap them to put them on this bill.
+  const [excluded, setExcluded] = useState<string[]>(() => members.filter((m) => m.role === "temp").map((m) => m.id));
   const [custom, setCustom] = useState(false);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   // Non-roommates on this one bill, e.g. a friend at pizza night. `amount` is only used in custom mode.
